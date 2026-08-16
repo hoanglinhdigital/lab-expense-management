@@ -10,13 +10,12 @@ import {
   formatCurrency,
   parseAmountInput,
 } from "@/lib/format";
-import type { RecordFormProps } from "@/lib/record-types";
+import { adjustmentCategoryType, type RecordFormProps } from "@/lib/record-types";
 
 export default function AdjustmentForm({
   form,
   options,
   errors,
-  config,
   onChange,
   onOpenAccount,
   onOpenCategory,
@@ -24,14 +23,15 @@ export default function AdjustmentForm({
   onSelectCategory,
 }: RecordFormProps) {
   const account = options.accounts.find((item) => item.id === form.fromAccountId);
-  const categories = options.categories.filter(
-    (item) => item.type === config.categoryType,
-  );
 
   const currentBalance = account?.balance ?? 0;
   const difference = form.newBalance
     ? amountToNumber(form.newBalance) - currentBalance
     : 0;
+
+  const categories = options.categories.filter(
+    (item) => item.type === adjustmentCategoryType(difference),
+  );
 
   return (
     <div className="flex flex-col gap-3">

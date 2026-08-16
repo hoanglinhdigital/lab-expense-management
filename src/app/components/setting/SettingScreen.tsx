@@ -8,6 +8,7 @@ import SettingHeader from "./SettingHeader";
 import SettingMenuList from "./SettingMenuList";
 import SettingSkeleton from "./SettingSkeleton";
 import SettingTileGroup from "./SettingTileGroup";
+import { ApiClientError, isUnauthorized } from "@/lib/api/client";
 import { fetchUserProfile, logout } from "@/lib/setting-client";
 import {
   LOGOUT_ITEM_ID,
@@ -39,14 +40,21 @@ export default function SettingScreen() {
         setProfile(result);
         setError(null);
       },
-      () => {
-        if (!cancelled) setError(LOAD_ERROR);
+      (fetchError: unknown) => {
+        if (cancelled) return;
+        if (isUnauthorized(fetchError)) {
+          router.replace("/login");
+          return;
+        }
+        setError(
+          fetchError instanceof ApiClientError ? fetchError.message : LOAD_ERROR,
+        );
       },
     );
     return () => {
       cancelled = true;
     };
-  }, [reloadToken]);
+  }, [reloadToken, router]);
 
   function retry() {
     setError(null);

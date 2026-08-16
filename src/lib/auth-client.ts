@@ -1,11 +1,10 @@
 /**
- * Lớp giao tiếp auth phía client.
- *
- * Hiện chưa có API thật (`docs/api-spec/` chưa có spec cho auth), nên `login()`
- * và `register()` là stub: giả lập độ trễ mạng rồi trả về kết quả thành công.
- * Khi API sẵn sàng, chỉ cần thay phần thân hai hàm này bằng `fetch`, phần UI
- * không phải sửa vì kiểu dữ liệu trả về giữ nguyên.
+ * Lớp giao tiếp auth phía client — gọi `POST /api/auth/login` và
+ * `POST /api/auth/register` (`docs/api-spec/auth.yaml`). Server set/xoá cookie
+ * `session` httpOnly, client không cần lưu gì thêm.
  */
+
+import { apiFetch, ApiClientError } from "./api/client";
 
 export interface LoginInput {
   email: string;
@@ -82,20 +81,33 @@ export function hasErrors<T>(errors: FieldErrors<T>): boolean {
   return Object.keys(errors).length > 0;
 }
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 export async function login(input: LoginInput): Promise<AuthResult> {
-  await delay(600);
-  // TODO: thay bằng POST /api/auth/login khi API sẵn sàng.
-  void input;
-  return { ok: true };
+  try {
+    await apiFetch("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email: input.email, password: input.password }),
+    });
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof ApiClientError) return { ok: false, message: error.message };
+    return { ok: false, message: "Đã có lỗi xảy ra, vui lòng thử lại sau." };
+  }
 }
 
 export async function register(input: RegisterInput): Promise<AuthResult> {
-  await delay(600);
-  // TODO: thay bằng POST /api/auth/register khi API sẵn sàng.
-  void input;
-  return { ok: true };
+  const name = `${input.firstName} ${input.lastName}`.trim();
+  try {
+    await apiFetch("/auth/register", {
+      method: "POST",
+      body: JSON.stringify({
+        email: input.email,
+        password: input.password,
+        name: name || input.email,
+      }),
+    });
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof ApiClientError) return { ok: false, message: error.message };
+    return { ok: false, message: "Đã có lỗi xảy ra, vui lòng thử lại sau." };
+  }
 }

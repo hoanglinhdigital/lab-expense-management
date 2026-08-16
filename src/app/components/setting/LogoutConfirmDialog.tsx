@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ApiClientError } from "@/lib/api/client";
 
 interface LogoutConfirmDialogProps {
   onCancel: () => void;
@@ -36,8 +37,12 @@ export default function LogoutConfirmDialog({
     setPending(true);
     try {
       await onConfirm();
-    } catch {
-      setError("Không đăng xuất được. Vui lòng thử lại.");
+    } catch (confirmError) {
+      setError(
+        confirmError instanceof ApiClientError
+          ? confirmError.message
+          : "Không đăng xuất được. Vui lòng thử lại.",
+      );
     } finally {
       setPending(false);
     }

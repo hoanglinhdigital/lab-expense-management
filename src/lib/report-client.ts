@@ -1,56 +1,74 @@
 /**
- * Lớp dữ liệu phía client cho màn Report.
+ * Lớp dữ liệu phía client cho màn Report — gọi `GET /api/report/overview`
+ * (`docs/api-spec/report.yaml`).
  *
- * Chưa có API thật (`docs/api-spec/` chưa có spec cho report), nên đây là stub:
- * giả lập độ trễ mạng rồi trả về dữ liệu mẫu khớp mockup. Khi API sẵn sàng chỉ
- * cần thay thân hàm bằng `fetch` (gợi ý: GET /api/report/overview và
- * GET /api/report/flow-summary?tab=) — kiểu trả về giữ nguyên nên UI không sửa.
+ * Chỉ tab "Current" của màn Flow detail có mockup/API tương ứng (4 kỳ cố định
+ * today/this_week/this_month/this_year trả sẵn trong `periods`); các tab
+ * Month/Quarter/Year/Custom chưa có API nên vẫn trả rỗng để UI hiện "đang phát
+ * triển" thay vì bịa số liệu — giữ đúng hành vi cũ.
  */
 
+import { apiFetch, fromDecimal } from "./api/client";
 import type { FlowDetail, PeriodTab, ReportOverview } from "./report-types";
 
-const CURRENCY = "VND";
+const CURRENCY_FALLBACK = "VND";
 
-const OVERVIEW: ReportOverview = {
-  statement: {
-    netWorth: 3_200_000_000,
-    assets: 1_900_000_000,
-    liabilities: 1_300_000_000,
-    currency: CURRENCY,
-  },
-  flow: { income: 20_000_000, expense: 12_000_000, currency: CURRENCY },
-};
+interface PeriodFlowDto {
+  id: string;
+  label: string;
+  income: string;
+  expense: string;
+}
 
-/** Số liệu tab "Current" — lấy đúng theo `docs/mockup/report/report-current.png`. */
-const CURRENT_DETAIL: FlowDetail = {
-  scopeLabel: "In 2026",
-  currency: CURRENCY,
-  periods: [
-    { id: "today", label: "Today", income: 0, expense: 0 },
-    { id: "week", label: "This week", income: 0, expense: 510_000 },
-    { id: "month", label: "This month", income: 0, expense: 510_000 },
-    { id: "quarter", label: "This quarter", income: 0, expense: 510_000 },
-    { id: "year", label: "This year", income: 72_689_000, expense: 8_302_200 },
-  ],
-};
+interface ReportOverviewDto {
+  statement: { netWorth: string; assets: string; liabilities: string };
+  periods: PeriodFlowDto[];
+  currency: string;
+}
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+interface ReportOverviewResponse {
+  data: ReportOverviewDto;
+}
+
+async function loadOverviewDto(): Promise<ReportOverviewDto> {
+  const { data } = await apiFetch<ReportOverviewResponse>("/report/overview");
+  return data;
 }
 
 export async function fetchReportOverview(): Promise<ReportOverview> {
-  await delay(500);
-  // TODO: thay bằng GET /api/report/overview khi API sẵn sàng.
-  return OVERVIEW;
+  const data = await loadOverviewDto();
+  const thisMonth =
+    data.periods.find((item) => item.id === "this_month") ?? data.periods[0];
+
+  return {
+    statement: {
+      netWorth: fromDecimal(data.statement.netWorth),
+      assets: fromDecimal(data.statement.assets),
+      liabilities: fromDecimal(data.statement.liabilities),
+      currency: data.currency,
+    },
+    flow: {
+      income: fromDecimal(thisMonth?.income),
+      expense: fromDecimal(thisMonth?.expense),
+      currency: data.currency,
+    },
+  };
 }
 
 export async function fetchFlowDetail(tab: PeriodTab): Promise<FlowDetail> {
-  await delay(400);
-  // TODO: thay bằng GET /api/report/flow-summary?tab=... khi API sẵn sàng.
-  // Chỉ tab Current có mockup; các tab còn lại trả rỗng để UI hiện thông báo
-  // "đang phát triển" thay vì bịa số liệu.
   if (tab !== "CURRENT") {
-    return { scopeLabel: CURRENT_DETAIL.scopeLabel, currency: CURRENCY, periods: [] };
+    return { scopeLabel: `In ${new Date().getFullYear()}`, currency: CURRENCY_FALLBACK, periods: [] };
   }
-  return CURRENT_DETAIL;
+
+  const data = await loadOverviewDto();
+  return {
+    scopeLabel: `In ${new Date().getFullYear()}`,
+    currency: data.currency,
+    periods: data.periods.map((item) => ({
+      id: item.id,
+      label: item.label,
+      income: fromDecimal(item.income),
+      expense: fromDecimal(item.expense),
+    })),
+  };
 }

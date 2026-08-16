@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import FormAlert from "../FormAlert";
 import ExpenseIncomeCard from "./ExpenseIncomeCard";
 import FinancialStatementCard from "./FinancialStatementCard";
 import ReportShortcutGrid from "./ReportShortcutGrid";
 import ReportSkeleton from "./ReportSkeleton";
+import { ApiClientError, isUnauthorized } from "@/lib/api/client";
 import { fetchReportOverview } from "@/lib/report-client";
 import type { ReportOverview } from "@/lib/report-types";
 
@@ -14,6 +16,7 @@ const COMING_SOON = "Tính năng đang phát triển, vui lòng quay lại sau."
 const LOAD_ERROR = "Không tải được dữ liệu báo cáo.";
 
 export default function ReportScreen() {
+  const router = useRouter();
   const [overview, setOverview] = useState<ReportOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -31,14 +34,21 @@ export default function ReportScreen() {
         setOverview(result);
         setError(null);
       },
-      () => {
-        if (!cancelled) setError(LOAD_ERROR);
+      (fetchError: unknown) => {
+        if (cancelled) return;
+        if (isUnauthorized(fetchError)) {
+          router.replace("/login");
+          return;
+        }
+        setError(
+          fetchError instanceof ApiClientError ? fetchError.message : LOAD_ERROR,
+        );
       },
     );
     return () => {
       cancelled = true;
     };
-  }, [reloadToken]);
+  }, [reloadToken, router]);
 
   function retry() {
     setError(null);

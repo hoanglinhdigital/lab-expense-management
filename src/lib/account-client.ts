@@ -1,69 +1,65 @@
 /**
- * Lớp dữ liệu phía client cho màn hình Account.
- *
- * Chưa có API thật (`docs/api-spec/` chưa có spec cho account), nên đây là stub:
- * giả lập độ trễ mạng rồi trả về dữ liệu mẫu, và giữ tài khoản vừa tạo trong bộ
- * nhớ suốt phiên làm việc. Khi API sẵn sàng chỉ cần thay thân các hàm bằng
- * `fetch` — kiểu trả về giữ nguyên nên UI không phải sửa.
+ * Lớp dữ liệu phía client cho màn hình Account — gọi `GET /api/accounts/summary`
+ * và `POST /api/accounts` (`docs/api-spec/account.yaml`). Server đã quy đổi
+ * `totalBalance`/`subtotal` về một loại tiền tệ nên không cần tính tay ở client.
  */
 
-import { DEFAULT_CURRENCY, type AccountItem, type AccountOverview } from "./account-types";
-import type { AccountKind } from "./account-types";
+import { apiFetch, fromDecimal, toDecimal } from "./api/client";
+import type { AccountKind, AccountItem, AccountOverview } from "./account-types";
 
-const SPENDING_GROUP = { id: "group-spending", title: "Spending account" };
-
-const ACCOUNTS: AccountItem[] = [
-  { id: "acc-cash", name: "Cash", kind: "CASH", currency: "VND", balance: 34_913_000, description: "" },
-  { id: "acc-bank", name: "Bank", kind: "BANK_ACCOUNT", currency: "VND", balance: 49_265_000, description: "" },
-  { id: "acc-credit", name: "CreditCard", kind: "CREDIT_CARD", currency: "VND", balance: 800_000, description: "" },
-  { id: "acc-ewallet", name: "E-Wallet", kind: "E_WALLET", currency: "VND", balance: 3_749_000, description: "" },
-  { id: "acc-suica", name: "Suica", kind: "E_WALLET", currency: "JPY", balance: 32_120, description: "" },
-  { id: "acc-paypal", name: "Paypal", kind: "E_WALLET", currency: "USD", balance: 750, description: "" },
-];
-
-/** Tỷ giá mẫu quy về VND — cần nguồn tỷ giá thật khi nối API. */
-const RATE_TO_VND: Record<string, number> = {
-  VND: 1,
-  USD: 26_315,
-  EUR: 28_600,
-  JPY: 169.5,
-  GBP: 33_400,
-  SGD: 19_500,
-  AUD: 17_200,
-  CAD: 19_100,
-  CNY: 3_650,
-};
-
-/** Bản sao trong bộ nhớ để tài khoản vừa tạo hiện ra ngay. */
-const state = {
-  accounts: [...ACCOUNTS],
-};
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+interface AccountDto {
+  id: string;
+  name: string;
+  type: string;
+  currency: string;
+  currentBalance: string;
+  description: string | null;
 }
 
-function createId(prefix: string): string {
-  return `${prefix}-${Date.now().toString(36)}`;
+interface AccountGroupDto {
+  type: string;
+  label: string;
+  accounts: AccountDto[];
 }
 
-/** Tài khoản khác tiền tệ được quy đổi trước khi cộng vào tổng. */
-function totalIn(accounts: AccountItem[], currency: string): number {
-  const base = RATE_TO_VND[currency] ?? 1;
-  return accounts.reduce((sum, account) => {
-    const rate = RATE_TO_VND[account.currency] ?? 0;
-    return sum + (account.balance * rate) / base;
-  }, 0);
+interface AccountSummaryResponse {
+  data: {
+    totalBalance: string;
+    currency: string;
+    groups: AccountGroupDto[];
+  };
+}
+
+interface AccountResponse {
+  data: AccountDto;
+}
+
+function toAccountItem(dto: AccountDto): AccountItem {
+  return {
+    id: dto.id,
+    name: dto.name,
+    // AccountType của backend có nhiều giá trị hơn AccountKind của frontend
+    // (SAVING_ACCOUNT, IC_CARD, INVESTMENT, OTHER nằm ngoài phạm vi màn này) —
+    // vẫn hiển thị đúng type gốc, accountKindLabel() đã có fallback an toàn.
+    kind: dto.type as AccountKind,
+    currency: dto.currency,
+    balance: fromDecimal(dto.currentBalance),
+    description: dto.description ?? "",
+  };
 }
 
 export async function fetchAccountOverview(): Promise<AccountOverview> {
-  await delay(500);
-  // TODO: thay bằng GET /api/accounts khi API sẵn sàng.
-  const accounts = [...state.accounts];
+  const { data } = await apiFetch<AccountSummaryResponse>("/accounts/summary");
   return {
-    totalBalance: Math.round(totalIn(accounts, DEFAULT_CURRENCY)),
-    currency: DEFAULT_CURRENCY,
-    groups: [{ ...SPENDING_GROUP, accounts }],
+    totalBalance: fromDecimal(data.totalBalance),
+    currency: data.currency,
+    groups: data.groups
+      .filter((group) => group.accounts.length > 0)
+      .map((group) => ({
+        id: `group-${group.type.toLowerCase()}`,
+        title: group.label,
+        accounts: group.accounts.map(toAccountItem),
+      })),
   };
 }
 
@@ -78,16 +74,15 @@ export interface CreateAccountInput {
 export async function createAccount(
   input: CreateAccountInput,
 ): Promise<AccountItem> {
-  await delay(500);
-  // TODO: thay bằng POST /api/accounts khi API sẵn sàng.
-  const account: AccountItem = {
-    id: createId("acc"),
-    name: input.name,
-    kind: input.kind,
-    currency: input.currency,
-    balance: input.balance,
-    description: input.description,
-  };
-  state.accounts = [...state.accounts, account];
-  return account;
+  const { data } = await apiFetch<AccountResponse>("/accounts", {
+    method: "POST",
+    body: JSON.stringify({
+      name: input.name,
+      type: input.kind,
+      initialBalance: toDecimal(input.balance),
+      currency: input.currency,
+      description: input.description || null,
+    }),
+  });
+  return toAccountItem(data);
 }

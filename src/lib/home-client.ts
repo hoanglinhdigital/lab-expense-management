@@ -1,80 +1,111 @@
 /**
- * Lớp dữ liệu phía client cho màn hình Home.
+ * Lớp dữ liệu phía client cho màn hình Home (dashboard).
  *
- * Chưa có API thật (`docs/api-spec/` chưa có spec cho dashboard), nên đây là
- * stub: giả lập độ trễ mạng rồi trả về dữ liệu mẫu khớp mockup. Khi API sẵn
- * sàng chỉ cần thay thân hàm bằng `fetch` (gợi ý: GET /api/home/overview?range=)
- * — kiểu trả về giữ nguyên nên UI không phải sửa.
+ * Gọi song song 6 endpoint độc lập như `docs/api-spec/report.yaml` mô tả:
+ * `total-balance`, `expense-vs-income`, `expense-by-category`, `expense-analysis`,
+ * `money-lend-borrow` và `GET /utility/exchange-rate`, cộng `GET /auth/me` để lấy
+ * tên user. Một lời gọi lỗi thì `Promise.all` reject ngay với lỗi đó — khớp hành
+ * vi hiện tại của `HomeScreen` (toàn màn hiện `FormAlert` khi tải lỗi).
  */
 
-import type { HomeOverview, MonthlyPoint, PeriodRange } from "./home-types";
+import { apiFetch, buildQuery, fromDecimal } from "./api/client";
 import { getPeriodOption } from "./home-types";
+import type { HomeOverview, LoanItem, PeriodRange } from "./home-types";
 
-const CURRENCY = "VND";
+interface MeResponse {
+  data: { name: string };
+}
 
-/** 12 tháng gần nhất tính tới 08/2026 — cắt bớt theo `range` khi trả về. */
-const MONTHLY: MonthlyPoint[] = [
-  { month: "2025-09", amount: 3_240_000 },
-  { month: "2025-10", amount: 2_780_000 },
-  { month: "2025-11", amount: 5_100_000 },
-  { month: "2025-12", amount: 6_450_000 },
-  { month: "2026-01", amount: 0 },
-  { month: "2026-02", amount: 0 },
-  { month: "2026-03", amount: 0 },
-  { month: "2026-04", amount: 1_100_000 },
-  { month: "2026-05", amount: 4_750_000 },
-  { month: "2026-06", amount: 1_800_000 },
-  { month: "2026-07", amount: 0 },
-  { month: "2026-08", amount: 400_000 },
-];
+interface TotalBalanceResponse {
+  data: { total: string; currency: string };
+}
 
-const OVERVIEW: Omit<HomeOverview, "monthly"> = {
-  user: { name: "Linh Nguyễn" },
-  balance: { total: 3_200_120_050, currency: CURRENCY },
-  flow: { income: 20_000_000, expense: 12_000_000, currency: CURRENCY },
-  expenseByCategory: [
-    { id: "cat-fixed", name: "Chi tiêu cố định", amount: 6_117_600 },
-    { id: "cat-extra", name: "Chi tiêu phát sinh", amount: 5_882_400 },
-  ],
-  exchangeRates: [
-    { code: "USD", symbol: "$", region: "US", rate: 25_450 },
-    { code: "EUR", symbol: "€", region: "EU", rate: 27_200 },
-    { code: "JPY", symbol: "¥", region: "JP", rate: 165 },
-  ],
-  loans: [
-    {
-      id: "loan-1",
-      kind: "LEND",
-      note: "Ku chó mượn khởi nghiệp",
-      amount: 3_000_000,
-      date: "2026-05-31",
-    },
-    {
-      id: "loan-2",
-      kind: "BORROW",
-      note: "Mượn 10tr Nọng",
-      amount: 10_000_000,
-      date: "2026-06-07",
-    },
-    {
-      id: "loan-3",
-      kind: "BORROW",
-      note: "Mượn nọng 1tr",
-      amount: 1_000_000,
-      date: "2026-05-31",
-    },
-  ],
-};
+interface ExpenseVsIncomeResponse {
+  data: { income: string; expense: string };
+}
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+interface CategoryBreakdownResponse {
+  data: { categoryId: string | null; name: string; amount: string }[];
+}
+
+interface ExchangeRateResponse {
+  data: { code: string; symbol: string; region: string | null; rate: string }[];
+}
+
+interface MonthlySummaryResponse {
+  data: { month: string; expense: string }[];
+}
+
+interface LoanDto {
+  id: string;
+  kind: "LEND" | "BORROW";
+  note: string | null;
+  amount: string;
+  date: string;
+}
+
+interface MoneyLendBorrowResponse {
+  data: LoanDto[];
+}
+
+function toLoanItem(dto: LoanDto): LoanItem {
+  return {
+    id: dto.id,
+    kind: dto.kind,
+    note: dto.note ?? "",
+    amount: fromDecimal(dto.amount),
+    date: dto.date.slice(0, 10),
+  };
 }
 
 export async function fetchHomeOverview(
   range: PeriodRange,
 ): Promise<HomeOverview> {
-  await delay(500);
-  // TODO: thay bằng GET /api/home/overview?range=... khi API sẵn sàng.
   const { months } = getPeriodOption(range);
-  return { ...OVERVIEW, monthly: MONTHLY.slice(-months) };
+
+  const [me, totalBalance, expenseVsIncome, expenseByCategory, exchangeRates, monthly, loans] =
+    await Promise.all([
+      apiFetch<MeResponse>("/auth/me"),
+      apiFetch<TotalBalanceResponse>("/report/total-balance"),
+      apiFetch<ExpenseVsIncomeResponse>("/report/expense-vs-income"),
+      apiFetch<CategoryBreakdownResponse>(
+        `/report/expense-by-category${buildQuery({ flow: "EXPENSE" })}`,
+      ),
+      apiFetch<ExchangeRateResponse>("/utility/exchange-rate"),
+      apiFetch<MonthlySummaryResponse>(
+        `/report/expense-analysis${buildQuery({ months })}`,
+      ),
+      apiFetch<MoneyLendBorrowResponse>(
+        `/report/money-lend-borrow${buildQuery({ pageSize: 5 })}`,
+      ),
+    ]);
+
+  return {
+    user: { name: me.data.name },
+    balance: {
+      total: fromDecimal(totalBalance.data.total),
+      currency: totalBalance.data.currency,
+    },
+    flow: {
+      income: fromDecimal(expenseVsIncome.data.income),
+      expense: fromDecimal(expenseVsIncome.data.expense),
+      currency: totalBalance.data.currency,
+    },
+    expenseByCategory: expenseByCategory.data.map((item) => ({
+      id: item.categoryId ?? "uncategorized",
+      name: item.name,
+      amount: fromDecimal(item.amount),
+    })),
+    exchangeRates: exchangeRates.data.map((item) => ({
+      code: item.code,
+      symbol: item.symbol,
+      region: item.region ?? "",
+      rate: fromDecimal(item.rate),
+    })),
+    monthly: monthly.data.map((item) => ({
+      month: item.month,
+      amount: fromDecimal(item.expense),
+    })),
+    loans: loans.data.map(toLoanItem),
+  };
 }

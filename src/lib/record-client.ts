@@ -1,105 +1,115 @@
 /**
- * Lớp dữ liệu phía client cho màn hình Record.
+ * Lớp dữ liệu phía client cho màn hình Record — gọi
+ * `GET /api/accounts`, `GET /api/categories`, `GET /api/contacts`,
+ * `GET /api/utility/exchange-rate`, `POST /api/categories`,
+ * `POST /api/contacts`, `POST /api/transactions`
+ * (`docs/api-spec/{account,category,contact,currency,transaction}.yaml`).
  *
- * Chưa có API thật (`docs/api-spec/` chưa có spec cho record/account/category),
- * nên đây là stub: giả lập độ trễ mạng rồi trả về dữ liệu mẫu, và giữ thay đổi
- * trong bộ nhớ suốt phiên làm việc. Khi API sẵn sàng chỉ cần thay thân các hàm
- * bằng `fetch` — kiểu trả về giữ nguyên nên UI không phải sửa.
+ * Adjustment không phải một loại giao dịch riêng ở backend — xem
+ * `saveTransaction()` và `adjustmentCategoryType()` trong `record-types.ts`.
  */
 
-import type {
-  AccountOption,
-  CategoryOption,
-  CategoryType,
-  ContactOption,
-  RecordFormState,
-  RecordOptions,
+import { apiFetch, buildQuery, fromDecimal, toDecimal } from "./api/client";
+import { amountToNumber, toDateTime } from "./format";
+import {
+  adjustmentCategoryType,
+  getRecordTypeConfig,
+  rateKey,
+  type AccountOption,
+  type CategoryOption,
+  type CategoryType,
+  type ContactOption,
+  type RecordFormState,
+  type RecordOptions,
 } from "./record-types";
-import { rateKey } from "./record-types";
 
-const ACCOUNTS: AccountOption[] = [
-  { id: "acc-cash", name: "Cash", symbol: "$", currency: "VND", balance: 35_113_000 },
-  { id: "acc-bank", name: "Bank", symbol: "B", currency: "VND", balance: 49_575_000 },
-  { id: "acc-credit", name: "CreditCard", symbol: "C", currency: "VND", balance: 800_000 },
-  { id: "acc-ewallet", name: "E-Wallet", symbol: "E", currency: "VND", balance: 3_749_000 },
-  { id: "acc-suica", name: "Suica", symbol: "S", currency: "JPY", balance: 32_120 },
-  { id: "acc-paypal", name: "Paypal", symbol: "P", currency: "USD", balance: 750 },
-];
-
-const CATEGORIES: CategoryOption[] = [
-  // Nhóm cha (expense)
-  { id: "cat-fixed", name: "Chi tiêu cố định", icon: "🏠", type: "EXPENSE", parentId: null, usageCount: 0 },
-  { id: "cat-extra", name: "Chi tiêu phát sinh", icon: "💸", type: "EXPENSE", parentId: null, usageCount: 0 },
-  { id: "cat-plan", name: "Chi tiêu có plan", icon: "🎯", type: "EXPENSE", parentId: null, usageCount: 0 },
-  { id: "cat-personal", name: "Personal", icon: "🎓", type: "EXPENSE", parentId: null, usageCount: 0 },
-  { id: "cat-health", name: "Health", icon: "🏃", type: "EXPENSE", parentId: null, usageCount: 0 },
-  { id: "cat-pet", name: "Thú cưng2", icon: "🐒", type: "EXPENSE", parentId: null, usageCount: 0 },
-
-  // Chi tiêu cố định
-  { id: "cat-rent", name: "Thuê nhà", icon: "🏠", type: "EXPENSE", parentId: "cat-fixed", usageCount: 12 },
-  { id: "cat-breakfast", name: "Ăn sáng", icon: "🍕", type: "EXPENSE", parentId: "cat-fixed", usageCount: 88 },
-  { id: "cat-lunch", name: "Ăn trưa", icon: "🍜", type: "EXPENSE", parentId: "cat-fixed", usageCount: 96 },
-  { id: "cat-dinner", name: "Ăn tối", icon: "🍚", type: "EXPENSE", parentId: "cat-fixed", usageCount: 80 },
-  { id: "cat-cafe", name: "Cafe", icon: "☕", type: "EXPENSE", parentId: "cat-fixed", usageCount: 64 },
-  { id: "cat-electric", name: "Điện", icon: "💡", type: "EXPENSE", parentId: "cat-fixed", usageCount: 40 },
-  { id: "cat-gas", name: "Gas", icon: "⛽", type: "EXPENSE", parentId: "cat-fixed", usageCount: 32 },
-  { id: "cat-water", name: "Nước", icon: "💧", type: "EXPENSE", parentId: "cat-fixed", usageCount: 24 },
-  { id: "cat-train", name: "Vé tàu", icon: "🚂", type: "EXPENSE", parentId: "cat-fixed", usageCount: 8 },
-
-  // Chi tiêu phát sinh
-  { id: "cat-party", name: "Tiệc tùng", icon: "🎉", type: "EXPENSE", parentId: "cat-extra", usageCount: 6 },
-  { id: "cat-snack", name: "Ăn vặt", icon: "🍎", type: "EXPENSE", parentId: "cat-extra", usageCount: 5 },
-  { id: "cat-fun", name: "Giải trí", icon: "🎮", type: "EXPENSE", parentId: "cat-extra", usageCount: 4 },
-  { id: "cat-gift", name: "Quà tặng", icon: "🎁", type: "EXPENSE", parentId: "cat-extra", usageCount: 3 },
-  { id: "cat-move", name: "Di chuyển", icon: "🚗", type: "EXPENSE", parentId: "cat-extra", usageCount: 2 },
-
-  // Income
-  { id: "cat-salary", name: "Lương", icon: "💵", type: "INCOME", parentId: null, usageCount: 24 },
-  { id: "cat-houselend", name: "House lend", icon: "🏠", type: "INCOME", parentId: null, usageCount: 18 },
-  { id: "cat-interest", name: "Interest", icon: "🏦", type: "INCOME", parentId: null, usageCount: 12 },
-  { id: "cat-bonus", name: "Bonus", icon: "💰", type: "INCOME", parentId: null, usageCount: 9 },
-  { id: "cat-sidejob", name: "Side Job", icon: "👨‍💻", type: "INCOME", parentId: null, usageCount: 6 },
-  { id: "cat-film", name: "Đóng phim", icon: "🎬", type: "INCOME", parentId: null, usageCount: 3 },
-];
-
-const CONTACTS: ContactOption[] = [
-  { id: "contact-ku", name: "Ku chó" },
-  { id: "contact-nong", name: "Nọng" },
-];
-
-/** Tỷ giá mẫu — cần nguồn tỷ giá thật khi nối API. */
-const EXCHANGE_RATES: Record<string, number> = {
-  [rateKey("VND", "USD")]: 0.000038,
-  [rateKey("USD", "VND")]: 26_315,
-  [rateKey("VND", "JPY")]: 0.0059,
-  [rateKey("JPY", "VND")]: 169.5,
-  [rateKey("USD", "JPY")]: 155.2,
-  [rateKey("JPY", "USD")]: 0.0064,
-};
-
-/** Bản sao trong bộ nhớ để category/contact vừa tạo hiện ra ngay. */
-const state = {
-  categories: [...CATEGORIES],
-  contacts: [...CONTACTS],
-};
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+interface AccountDto {
+  id: string;
+  name: string;
+  currency: string;
+  currentBalance: string;
 }
 
-function createId(prefix: string): string {
-  return `${prefix}-${Date.now().toString(36)}`;
+interface CategoryDto {
+  id: string;
+  name: string;
+  type: CategoryType;
+  parentId: string | null;
+  icon: string | null;
+  usageCount?: number;
+}
+
+interface ContactDto {
+  id: string;
+  name: string;
+}
+
+interface ExchangeRateDto {
+  code: string;
+  base: string;
+  rate: string;
+}
+
+interface TransactionDto {
+  id: string;
+}
+
+function toAccountOption(dto: AccountDto): AccountOption {
+  return {
+    id: dto.id,
+    name: dto.name,
+    currency: dto.currency,
+    balance: fromDecimal(dto.currentBalance),
+    symbol: dto.name.trim().charAt(0).toUpperCase() || "?",
+  };
+}
+
+function toCategoryOption(dto: CategoryDto): CategoryOption {
+  return {
+    id: dto.id,
+    name: dto.name,
+    icon: dto.icon ?? "",
+    type: dto.type,
+    parentId: dto.parentId,
+    usageCount: dto.usageCount ?? 0,
+  };
+}
+
+function toContactOption(dto: ContactDto): ContactOption {
+  return { id: dto.id, name: dto.name };
 }
 
 export async function fetchRecordOptions(): Promise<RecordOptions> {
-  await delay(500);
-  // TODO: thay bằng GET /api/record/options khi API sẵn sàng.
-  return {
-    accounts: ACCOUNTS,
-    categories: [...state.categories],
-    contacts: [...state.contacts],
-    exchangeRates: EXCHANGE_RATES,
-  };
+  const [accountsRes, categoriesRes, contactsRes] = await Promise.all([
+    apiFetch<{ data: AccountDto[] }>(`/accounts${buildQuery({ pageSize: 100 })}`),
+    apiFetch<{ data: CategoryDto[] }>(`/categories${buildQuery({ pageSize: 200 })}`),
+    apiFetch<{ data: ContactDto[] }>(`/contacts${buildQuery({ pageSize: 100 })}`),
+  ]);
+
+  const accounts = accountsRes.data.map(toAccountOption);
+  const categories = categoriesRes.data.map(toCategoryOption);
+  const contacts = contactsRes.data.map(toContactOption);
+
+  // Tỷ giá chỉ cần khi có từ 2 loại tiền tệ trở lên trong danh sách account
+  // (Transfer giữa hai account cùng tiền tệ không cần quy đổi).
+  const currencies = Array.from(new Set(accounts.map((item) => item.currency)));
+  const exchangeRates: Record<string, number> = {};
+  if (currencies.length > 1) {
+    await Promise.all(
+      currencies.map(async (to) => {
+        const { data } = await apiFetch<{ data: ExchangeRateDto[] }>(
+          `/utility/exchange-rate${buildQuery({ base: to, pageSize: 200 })}`,
+        );
+        for (const entry of data) {
+          if (currencies.includes(entry.code)) {
+            exchangeRates[rateKey(entry.code, to)] = fromDecimal(entry.rate);
+          }
+        }
+      }),
+    );
+  }
+
+  return { accounts, categories, contacts, exchangeRates };
 }
 
 export interface CreateCategoryInput {
@@ -112,33 +122,69 @@ export interface CreateCategoryInput {
 export async function createCategory(
   input: CreateCategoryInput,
 ): Promise<CategoryOption> {
-  await delay(400);
-  // TODO: thay bằng POST /api/categories khi API sẵn sàng.
-  const category: CategoryOption = {
-    id: createId("cat"),
-    name: input.name,
-    icon: input.icon,
-    type: input.type,
-    parentId: input.parentId,
-    usageCount: 0,
-  };
-  state.categories = [...state.categories, category];
-  return category;
+  const { data } = await apiFetch<{ data: CategoryDto }>("/categories", {
+    method: "POST",
+    body: JSON.stringify({
+      name: input.name,
+      type: input.type,
+      parentId: input.parentId,
+      icon: input.icon || null,
+    }),
+  });
+  return toCategoryOption(data);
 }
 
 export async function createContact(name: string): Promise<ContactOption> {
-  await delay(400);
-  // TODO: thay bằng POST /api/contacts khi API sẵn sàng.
-  const contact: ContactOption = { id: createId("contact"), name };
-  state.contacts = [...state.contacts, contact];
-  return contact;
+  const { data } = await apiFetch<{ data: ContactDto }>("/contacts", {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  });
+  return toContactOption(data);
 }
 
 export async function saveTransaction(
   form: RecordFormState,
+  options: RecordOptions,
 ): Promise<{ id: string }> {
-  await delay(600);
-  // TODO: thay bằng POST /api/transactions khi API sẵn sàng.
-  void form;
-  return { id: createId("txn") };
+  const date = toDateTime(form.date, form.time).toISOString();
+
+  if (form.type === "ADJUSTMENT") {
+    const account = options.accounts.find(
+      (item) => item.id === form.fromAccountId,
+    );
+    const difference = amountToNumber(form.newBalance) - (account?.balance ?? 0);
+    const type = adjustmentCategoryType(difference);
+    const { data } = await apiFetch<{ data: TransactionDto }>("/transactions", {
+      method: "POST",
+      body: JSON.stringify({
+        type,
+        amount: toDecimal(Math.abs(difference)),
+        date,
+        note: `ADJUST-${form.note.trim()}`,
+        fromAccountId: form.fromAccountId,
+        categoryId: form.categoryId,
+      }),
+    });
+    return { id: data.id };
+  }
+
+  const config = getRecordTypeConfig(form.type);
+  const { data } = await apiFetch<{ data: TransactionDto }>("/transactions", {
+    method: "POST",
+    body: JSON.stringify({
+      type: form.type,
+      amount: toDecimal(amountToNumber(form.amount)),
+      receiveAmount:
+        config.hasToAccount && form.receiveAmount
+          ? toDecimal(amountToNumber(form.receiveAmount))
+          : null,
+      date,
+      note: form.note.trim() || null,
+      fromAccountId: form.fromAccountId,
+      toAccountId: config.hasToAccount ? form.toAccountId : null,
+      categoryId: config.hasCategory ? form.categoryId : null,
+      contactId: config.hasContact ? form.contactId : null,
+    }),
+  });
+  return { id: data.id };
 }

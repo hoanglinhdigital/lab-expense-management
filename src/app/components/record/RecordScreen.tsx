@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import FormAlert from "../FormAlert";
 import RecordHeader from "./RecordHeader";
 import SaveButton from "./SaveButton";
@@ -20,12 +21,14 @@ import {
   fetchRecordOptions,
   saveTransaction,
 } from "@/lib/record-client";
+import { ApiClientError, isUnauthorized } from "@/lib/api/client";
 import {
   amountToNumber,
   toDateInputValue,
   toTimeInputValue,
 } from "@/lib/format";
 import {
+  adjustmentCategoryType,
   getRecordTypeConfig,
   rateKey,
   type CategoryType,
@@ -65,7 +68,9 @@ function createInitialForm(): RecordFormState {
 }
 
 export default function RecordScreen() {
+  const router = useRouter();
   const [status, setStatus] = useState<Status>("loading");
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [options, setOptions] = useState<RecordOptions | null>(null);
   const [form, setForm] = useState<RecordFormState>(createInitialForm);
   const [errors, setErrors] = useState<RecordFieldErrors>({});
@@ -93,14 +98,24 @@ export default function RecordScreen() {
         }));
         setStatus("ready");
       },
-      () => {
-        if (!cancelled) setStatus("error");
+      (error: unknown) => {
+        if (cancelled) return;
+        if (isUnauthorized(error)) {
+          router.replace("/login");
+          return;
+        }
+        setLoadError(
+          error instanceof ApiClientError
+            ? error.message
+            : "Không tải được dữ liệu tài khoản và danh mục.",
+        );
+        setStatus("error");
       },
     );
     return () => {
       cancelled = true;
     };
-  }, [reloadToken]);
+  }, [reloadToken, router]);
 
   const config = getRecordTypeConfig(form.type);
 
@@ -111,8 +126,52 @@ export default function RecordScreen() {
     setErrors((previous) => ({ ...previous, [field]: undefined }));
     setForm((previous) => {
       const next = { ...previous, [field]: value };
-      return next.type === "TRANSFER" ? withConvertedAmount(next) : next;
+      if (next.type === "TRANSFER") return withConvertedAmount(next);
+      if (
+        next.type === "ADJUSTMENT" &&
+        (field === "newBalance" || field === "fromAccountId")
+      ) {
+        return withAdjustmentCategoryReset(next, previous);
+      }
+      return next;
     });
+  }
+
+  /**
+   * Category cho phép chọn ở Adjustment đổi theo dấu của `newBalance − balance`
+   * (âm -> EXPENSE, dương/0 -> INCOME — xem `adjustmentCategoryType`). Đổi dấu
+   * thì category cũ không còn hợp lệ với type sẽ gửi lên, phải xoá lựa chọn.
+   */
+  function withAdjustmentCategoryReset(
+    next: RecordFormState,
+    previous: RecordFormState,
+  ): RecordFormState {
+    const account = options?.accounts.find(
+      (item) => item.id === next.fromAccountId,
+    );
+    const balance = account?.balance ?? 0;
+    const previousDiff = previous.newBalance
+      ? amountToNumber(previous.newBalance) - balance
+      : 0;
+    const nextDiff = next.newBalance
+      ? amountToNumber(next.newBalance) - balance
+      : 0;
+    if (adjustmentCategoryType(previousDiff) === adjustmentCategoryType(nextDiff)) {
+      return next;
+    }
+    return { ...next, categoryId: "" };
+  }
+
+  /** Type danh mục hiệu lực cho form hiện tại — Adjustment tính động theo dấu chênh lệch. */
+  function currentCategoryType(): CategoryType {
+    if (form.type !== "ADJUSTMENT") return config.categoryType ?? "EXPENSE";
+    const account = options?.accounts.find(
+      (item) => item.id === form.fromAccountId,
+    );
+    const difference = form.newBalance
+      ? amountToNumber(form.newBalance) - (account?.balance ?? 0)
+      : 0;
+    return adjustmentCategoryType(difference);
   }
 
   /** Tự quy đổi số tiền nhận khi Transfer giữa hai loại tiền tệ khác nhau. */
@@ -201,6 +260,10 @@ export default function RecordScreen() {
   }
 
   async function submit() {
+    // Form chỉ render sau khi `options` đã tải xong (xem guard `!options` bên
+    // dưới) nên nhánh này không xảy ra lúc chạy — chỉ để TypeScript hẹp kiểu.
+    if (!options) return;
+
     const nextErrors = validate();
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
@@ -209,7 +272,7 @@ export default function RecordScreen() {
     setNotice(null);
     setPending(true);
     try {
-      await saveTransaction(form);
+      await saveTransaction(form, options);
       setNotice("Đã lưu giao dịch.");
       // Giữ lại loại giao dịch và tài khoản để nhập khoản tiếp theo cho nhanh.
       setForm((previous) => ({
@@ -217,8 +280,12 @@ export default function RecordScreen() {
         type: previous.type,
         fromAccountId: previous.fromAccountId,
       }));
-    } catch {
-      setFormError("Không lưu được giao dịch. Vui lòng thử lại.");
+    } catch (error) {
+      setFormError(
+        error instanceof ApiClientError
+          ? error.message
+          : "Không lưu được giao dịch. Vui lòng thử lại.",
+      );
     } finally {
       setPending(false);
     }
@@ -230,6 +297,8 @@ export default function RecordScreen() {
     type: CategoryType;
     parentId: string | null;
   }) {
+    // Không catch ở đây — CategoryFormPanel tự bắt lỗi (ApiClientError) và hiển
+    // thị inline, panel phải ở lại mở để user thấy lỗi và sửa.
     const category = await createCategory(input);
     setOptions((previous) =>
       previous
@@ -237,13 +306,15 @@ export default function RecordScreen() {
         : previous,
     );
     // Chỉ chọn sẵn khi danh mục vừa tạo đúng loại đang nhập.
-    if (category.type === config.categoryType) {
+    if (category.type === currentCategoryType()) {
       updateField("categoryId", category.id);
     }
     setOverlay({ kind: "none" });
   }
 
   async function handleCreateContact(name: string) {
+    // Không catch ở đây — ContactCreateDialog tự bắt lỗi (ApiClientError) và
+    // hiển thị inline, dialog phải ở lại mở để user thấy lỗi và sửa.
     const contact = await createContact(name);
     setOptions((previous) =>
       previous
@@ -261,7 +332,7 @@ export default function RecordScreen() {
       <div className="mx-auto w-full max-w-2xl p-4">
         <FormAlert
           tone="error"
-          message="Không tải được dữ liệu tài khoản và danh mục."
+          message={loadError ?? "Không tải được dữ liệu tài khoản và danh mục."}
           onRetry={() => {
             setStatus("loading");
             setReloadToken((token) => token + 1);
@@ -302,7 +373,7 @@ export default function RecordScreen() {
     onAddCategory: () =>
       setOverlay({
         kind: "category-form" as const,
-        type: config.categoryType ?? "EXPENSE",
+        type: currentCategoryType(),
       }),
     onSelectCategory: (categoryId: string) =>
       updateField("categoryId", categoryId),
@@ -364,7 +435,11 @@ export default function RecordScreen() {
       {overlay.kind === "category" ? (
         <CategorySheet
           categories={options.categories}
-          activeType={categorySheetType}
+          // Adjustment không cho đổi tab (allowTypeSwitch=false) và category hợp
+          // lệ đổi theo dấu chênh lệch, không phải tab đang chọn trong sheet.
+          activeType={
+            form.type === "ADJUSTMENT" ? currentCategoryType() : categorySheetType
+          }
           onTypeChange={setCategorySheetType}
           allowTypeSwitch={form.type !== "ADJUSTMENT"}
           selectedId={form.categoryId}
@@ -373,7 +448,10 @@ export default function RecordScreen() {
             setOverlay({ kind: "none" });
           }}
           onAddNew={() =>
-            setOverlay({ kind: "category-form", type: categorySheetType })
+            setOverlay({
+              kind: "category-form",
+              type: form.type === "ADJUSTMENT" ? currentCategoryType() : categorySheetType,
+            })
           }
           onClose={() => setOverlay({ kind: "none" })}
         />

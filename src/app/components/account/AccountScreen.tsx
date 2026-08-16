@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import FormAlert from "../FormAlert";
 import AccountFormPanel from "./AccountFormPanel";
@@ -8,6 +9,7 @@ import AccountGroupCard from "./AccountGroupCard";
 import AccountHeader from "./AccountHeader";
 import AccountSkeleton from "./AccountSkeleton";
 import { createAccount, fetchAccountOverview } from "@/lib/account-client";
+import { ApiClientError, isUnauthorized } from "@/lib/api/client";
 import { amountToNumber } from "@/lib/format";
 import type { AccountFormState, AccountOverview } from "@/lib/account-types";
 
@@ -15,6 +17,7 @@ const COMING_SOON = "Tính năng đang phát triển, vui lòng quay lại sau."
 const LOAD_ERROR = "Không tải được danh sách tài khoản.";
 
 export default function AccountScreen() {
+  const router = useRouter();
   const [overview, setOverview] = useState<AccountOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -34,14 +37,21 @@ export default function AccountScreen() {
         setOverview(result);
         setError(null);
       },
-      () => {
-        if (!cancelled) setError(LOAD_ERROR);
+      (fetchError: unknown) => {
+        if (cancelled) return;
+        if (isUnauthorized(fetchError)) {
+          router.replace("/login");
+          return;
+        }
+        setError(
+          fetchError instanceof ApiClientError ? fetchError.message : LOAD_ERROR,
+        );
       },
     );
     return () => {
       cancelled = true;
     };
-  }, [reloadToken]);
+  }, [reloadToken, router]);
 
   function reload() {
     setError(null);

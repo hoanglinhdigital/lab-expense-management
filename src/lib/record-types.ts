@@ -114,6 +114,16 @@ export function getRecordTypeConfig(type: RecordType): RecordTypeConfig {
   return config ?? RECORD_TYPES[0];
 }
 
+/**
+ * Adjustment không phải một loại giao dịch riêng ở backend: số dư mới lớn hơn
+ * số dư hiện tại được ghi thành một giao dịch `INCOME`, nhỏ hơn thành `EXPENSE`.
+ * Vì vậy category cho phép chọn trong `AdjustmentForm` phải đổi theo dấu của
+ * `difference` tại thời điểm nhập, không cố định một loại như các RecordType khác.
+ */
+export function adjustmentCategoryType(difference: number): CategoryType {
+  return difference < 0 ? "EXPENSE" : "INCOME";
+}
+
 export interface AccountOption {
   id: string;
   name: string;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ApiClientError } from "@/lib/api/client";
 
 interface ContactCreateDialogProps {
   /** Tên đã tồn tại, để chặn trùng (so sánh không phân biệt hoa thường). */
@@ -49,8 +50,12 @@ export default function ContactCreateDialog({
     setPending(true);
     try {
       await onSubmit(value);
-    } catch {
-      setError("Không tạo được contact. Vui lòng thử lại.");
+    } catch (submitError) {
+      setError(
+        submitError instanceof ApiClientError
+          ? submitError.message
+          : "Không tạo được contact. Vui lòng thử lại.",
+      );
     } finally {
       setPending(false);
     }

@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { CalendarDays, ChevronLeft } from "lucide-react";
 import FormAlert from "../FormAlert";
 import FlowDetailSkeleton from "./FlowDetailSkeleton";
 import FlowPeriodRow from "./FlowPeriodRow";
 import FlowPeriodTabs from "./FlowPeriodTabs";
+import { ApiClientError, isUnauthorized } from "@/lib/api/client";
 import { fetchFlowDetail } from "@/lib/report-client";
 import type { FlowDetail, PeriodTab } from "@/lib/report-types";
 
@@ -14,6 +16,7 @@ const COMING_SOON = "Tính năng đang phát triển, vui lòng quay lại sau."
 const LOAD_ERROR = "Không tải được số liệu thu chi.";
 
 export default function FlowDetailScreen() {
+  const router = useRouter();
   const [tab, setTab] = useState<PeriodTab>("CURRENT");
   const [detail, setDetail] = useState<FlowDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -32,14 +35,21 @@ export default function FlowDetailScreen() {
         setDetail(result);
         setError(null);
       },
-      () => {
-        if (!cancelled) setError(LOAD_ERROR);
+      (fetchError: unknown) => {
+        if (cancelled) return;
+        if (isUnauthorized(fetchError)) {
+          router.replace("/login");
+          return;
+        }
+        setError(
+          fetchError instanceof ApiClientError ? fetchError.message : LOAD_ERROR,
+        );
       },
     );
     return () => {
       cancelled = true;
     };
-  }, [tab, reloadToken]);
+  }, [tab, reloadToken, router]);
 
   function retry() {
     setError(null);

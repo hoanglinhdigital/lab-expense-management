@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import FormAlert from "../FormAlert";
 import ExchangeRateCard from "./ExchangeRateCard";
 import ExpenseAnalysisCard from "./ExpenseAnalysisCard";
@@ -8,6 +9,7 @@ import FlowSummaryCard from "./FlowSummaryCard";
 import HomeHeader from "./HomeHeader";
 import HomeSkeleton from "./HomeSkeleton";
 import LoanSummaryCard from "./LoanSummaryCard";
+import { ApiClientError, isUnauthorized } from "@/lib/api/client";
 import { fetchHomeOverview } from "@/lib/home-client";
 import type { HomeOverview, PeriodRange } from "@/lib/home-types";
 
@@ -15,6 +17,7 @@ const COMING_SOON = "Tính năng đang phát triển, vui lòng quay lại sau."
 const LOAD_ERROR = "Không tải được dữ liệu tổng quan.";
 
 export default function HomeScreen() {
+  const router = useRouter();
   const [overview, setOverview] = useState<HomeOverview | null>(null);
   const [range, setRange] = useState<PeriodRange>("6M");
   const [chartLoading, setChartLoading] = useState(false);
@@ -36,16 +39,22 @@ export default function HomeScreen() {
         setError(null);
         setChartLoading(false);
       },
-      () => {
+      (fetchError: unknown) => {
         if (cancelled) return;
-        setError(LOAD_ERROR);
+        if (isUnauthorized(fetchError)) {
+          router.replace("/login");
+          return;
+        }
+        setError(
+          fetchError instanceof ApiClientError ? fetchError.message : LOAD_ERROR,
+        );
         setChartLoading(false);
       },
     );
     return () => {
       cancelled = true;
     };
-  }, [range, reloadToken]);
+  }, [range, reloadToken, router]);
 
   function retry() {
     setError(null);

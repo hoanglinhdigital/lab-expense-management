@@ -5,6 +5,7 @@ import { ChevronRight, X } from "lucide-react";
 import FullScreenPanel from "../FullScreenPanel";
 import IconPickerPanel from "./IconPickerPanel";
 import ParentCategoryPanel from "./ParentCategoryPanel";
+import { ApiClientError } from "@/lib/api/client";
 import { DEFAULT_CATEGORY_ICON } from "@/lib/category-icons";
 import type { CategoryOption, CategoryType } from "@/lib/record-types";
 
@@ -68,8 +69,12 @@ export default function CategoryFormPanel({
         type,
         parentId: showParent ? parentId : null,
       });
-    } catch {
-      setError("Không tạo được danh mục. Vui lòng thử lại.");
+    } catch (submitError) {
+      setError(
+        submitError instanceof ApiClientError
+          ? submitError.message
+          : "Không tạo được danh mục. Vui lòng thử lại.",
+      );
     } finally {
       setPending(false);
     }

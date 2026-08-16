@@ -13,6 +13,7 @@ import FullScreenPanel from "../FullScreenPanel";
 import FormAlert from "../FormAlert";
 import AccountKindSheet from "./AccountKindSheet";
 import CurrencySheet from "./CurrencySheet";
+import { ApiClientError } from "@/lib/api/client";
 import { amountToNumber, formatAmountInput, parseAmountInput } from "@/lib/format";
 import {
   accountKindLabel,
@@ -84,8 +85,12 @@ export default function AccountFormPanel({
     setPending(true);
     try {
       await onSubmit({ ...form, name: form.name.trim() });
-    } catch {
-      setSubmitError("Không tạo được tài khoản. Vui lòng thử lại.");
+    } catch (error) {
+      setSubmitError(
+        error instanceof ApiClientError
+          ? error.message
+          : "Không tạo được tài khoản. Vui lòng thử lại.",
+      );
     } finally {
       setPending(false);
     }
