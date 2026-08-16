@@ -127,3 +127,50 @@ export async function GET(req: Request) {
   }
 }
 ```
+
+## 6. Bổ sung test script khi API thay đổi
+
+**Mọi thay đổi API — thêm endpoint, đổi request/response, đổi mã lỗi, đổi validation — đều phải kèm test script trong cùng task.** Task chỉ sửa code mà không đụng tới `test/` là task chưa xong.
+
+Bộ test viết bằng **Grafana k6**, đặt tại `test/<module>/<module>.test.js` theo đúng nhóm API:
+
+```
+test/account/account.test.js       test/contact/contact.test.js
+test/category/category.test.js     test/currency/currency.test.js
+test/auth/auth.test.js             test/transaction/transaction.test.js
+                                   test/report/report.test.js
+```
+
+- API thuộc module đã có → **thêm case vào đúng file module đó**, không tạo file mới.
+- Module mới → tạo `test/<module>/<module>.test.js` theo đúng khuôn của các file sẵn có, rồi đăng ký vào mảng `MODULES` trong `test/all.test.js`.
+- Đọc `test/README.md` trước khi sửa — nó nói rõ cơ chế `ctx.ready` / `bootstrap*()` khiến mỗi file vừa chạy lẻ được vừa chạy chung được.
+
+Ràng buộc khi viết case:
+
+| Quy tắc | Lý do |
+|---|---|
+| Dùng `expect(id, ok, detail)` của `test/lib/expect.js`, **không** gọi thẳng `check()` của k6 | `id` là mã test case (`B15`, `H23`...) khớp bảng test case trong `plans/backend/*.md`, tra ngược được khi fail |
+| `detail` luôn kèm **dữ liệu thực tế** (`JSON.stringify(r.body)`, giá trị so sánh) | Fail mà không thấy giá trị thật thì phải chạy lại mới debug được |
+| Gọi API qua client trong `ctx` (`A`, `B`, `anon`) | `A`/`B` là hai user khác nhau — dùng để chứng minh dữ liệu tách bạch; `anon` cho case `401` |
+| Mỗi endpoint mới phải có đủ: happy path, validation `400`, `401` khi chưa đăng nhập, `404` khi truy cập dữ liệu của user khác | Bốn nhóm này là nơi lỗi bảo mật thực sự xuất hiện |
+| Dữ liệu tạo mới gắn hậu tố `ctx.stamp` | Bộ test chạy trên database thật, không gắn stamp là đụng ràng buộc trùng tên ở lần chạy thứ hai |
+
+Thêm test case mới thì **cập nhật luôn bảng test case trong `plans/backend/<ten_task>.md`** để mã case ở hai nơi không lệch nhau.
+
+## 7. Regression test sau khi code xong
+
+Code xong, **gọi sub-agent `api-testing`** (`.claude/agents/api-testing.md`) để chạy regression trên toàn bộ bộ test, không tự chạy rồi tự kết luận.
+
+Giao cho sub-agent đúng ba việc:
+
+1. Chạy module liên quan tới thay đổi vừa làm: `k6 run test/<module>/<module>.test.js`
+2. Chạy toàn bộ để bắt hồi quy sang module khác: `k6 run test/all.test.js`
+3. Báo cáo lại cho agent chính: số case pass/fail, và với mỗi case fail thì nêu mã case, giá trị mong đợi, giá trị thực tế.
+
+Lưu ý khi giao việc:
+
+- Cần dev server đang chạy (`npm run dev`). Server không ở port mặc định thì truyền `-e API_BASE_URL=http://localhost:<port>/api`.
+- `k6 run` trả **exit code 99** khi có case fail (nhờ threshold `checks: rate==1.00`), exit `0` khi sạch. Đây là căn cứ pass/fail, không phải cảm nhận từ log.
+- Sub-agent **không được sửa code trong `src/` hoặc `prisma/`**. Nó chỉ báo cáo; sửa lỗi nghiệp vụ là việc của agent chính.
+
+Agent chính nhận báo cáo rồi **thuật lại kết quả cho user** — số case pass/fail và các case fail — trước khi coi task là hoàn thành. Còn case fail thì task chưa xong: sửa code, chạy lại, cho tới khi sạch.

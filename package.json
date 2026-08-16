@@ -7,7 +7,14 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:api": "node test/run.mjs"
+    "test:api": "k6 run test/all.test.js",
+    "test:auth": "k6 run test/auth/auth.test.js",
+    "test:currency": "k6 run test/currency/currency.test.js",
+    "test:account": "k6 run test/account/account.test.js",
+    "test:category": "k6 run test/category/category.test.js",
+    "test:contact": "k6 run test/contact/contact.test.js",
+    "test:transaction": "k6 run test/transaction/transaction.test.js",
+    "test:report": "k6 run test/report/report.test.js"
   },
   "dependencies": {
     "@prisma/adapter-mariadb": "^7.9.1",
