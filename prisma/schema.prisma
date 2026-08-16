@@ -1,0 +1,256 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+/// Loại giao dịch — gộp mọi nghiệp vụ vào một model Transaction duy nhất.
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+  BORROW
+  LEND
+}
+
+/// Category chỉ áp dụng cho dòng tiền vào hoặc dòng tiền ra.
+enum CategoryType {
+  INCOME
+  EXPENSE
+}
+
+/// Phạm vi của category: mặc định hệ thống (dùng chung) hay do user tự tạo.
+enum CategoryScope {
+  SYSTEM
+  USER
+}
+
+/// Loại nguồn tiền của user.
+enum AccountType {
+  CASH
+  BANK_ACCOUNT
+  SAVING_ACCOUNT
+  E_WALLET
+  CREDIT_CARD
+  IC_CARD
+  INVESTMENT
+  OTHER
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+model User {
+  id              String   @id @default(cuid())
+  email           String   @unique(map: "uq_user_email")
+  name            String
+  passwordHash    String
+  /// Mã tiền tệ mặc định theo ISO 4217, ví dụ "VND", "JPY".
+  defaultCurrency String   @default("VND") @db.VarChar(3)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  isDeleted       Boolean  @default(false)
+
+  accounts     Account[]
+  categories   Category[]
+  contacts     Contact[]
+  transactions Transaction[]
+  sessions     Session[]
+
+  @@index([isDeleted, createdAt], map: "idx_user_is_deleted_created_at")
+  @@map("user")
+}
+
+model Account {
+  id     String @id @default(cuid())
+  userId String
+
+  name String
+  type AccountType
+
+  /// Số dư khởi tạo. Số dư hiện tại = initialBalance +/- tổng hợp từ transaction.
+  initialBalance Decimal @default(0) @db.Decimal(18, 2)
+  /// Số dư hiện tại, được tính toán từ initialBalance và các giao dịch liên quan.
+  currentBalance Decimal @default(0) @db.Decimal(18, 2)
+  currency       String  @default("VND") @db.VarChar(3)
+  icon           String?
+  /// Ghi chú ngắn hiển thị dưới tên nguồn tiền.
+  description    String? @db.VarChar(200)
+  isDefault      Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isDeleted Boolean  @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  outgoingTransactions Transaction[] @relation("TransactionFromAccount")
+  incomingTransactions Transaction[] @relation("TransactionToAccount")
+
+  @@unique([userId, name], map: "uq_account_user_id_name")
+  @@index([userId, isDeleted], map: "idx_account_user_id_is_deleted")
+  @@index([userId, type, isDeleted], map: "idx_account_user_id_type_is_deleted")
+  @@index([userId, isDefault], map: "idx_account_user_id_is_default")
+  @@map("account")
+}
+
+/// Category dùng chung một model, phân biệt phạm vi bằng `scope`.
+/// scope = SYSTEM  -> userId = null, mọi user đều thấy, không được sửa/xoá (chặn ở tầng service).
+/// scope = USER    -> userId bắt buộc có giá trị.
+model Category {
+  id       String        @id @default(cuid())
+  userId   String?
+  scope    CategoryScope @default(USER)
+  parentId String?
+
+  name  String
+  icon  String?
+  color String?      @db.VarChar(9)
+  type  CategoryType
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isDeleted Boolean  @default(false)
+
+  user         User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent       Category?     @relation("CategoryParent", fields: [parentId], references: [id], onDelete: Restrict)
+  children     Category[]    @relation("CategoryParent")
+  transactions Transaction[]
+
+  @@unique([userId, name, type], map: "uq_category_user_id_name_type")
+  @@index([userId, type, isDeleted], map: "idx_category_user_id_type_is_deleted")
+  @@index([scope, type, isDeleted], map: "idx_category_scope_type_is_deleted")
+  @@index([parentId], map: "idx_category_parent_id")
+  @@map("category")
+}
+
+/// Người liên quan trong giao dịch BORROW (mình mượn) / LEND (mình cho mượn).
+model Contact {
+  id     String @id @default(cuid())
+  userId String
+
+  name  String
+  phone String?
+  email String?
+  note  String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isDeleted Boolean  @default(false)
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@unique([userId, name], map: "uq_contact_user_id_name")
+  @@index([userId, isDeleted], map: "idx_contact_user_id_is_deleted")
+  @@map("contact")
+}
+
+/// Một model duy nhất cho mọi giao dịch:
+/// INCOME/EXPENSE -> fromAccountId + categoryId
+/// TRANSFER       -> fromAccountId + toAccountId
+/// BORROW/LEND    -> fromAccountId + contactId
+model Transaction {
+  id     String @id @default(cuid())
+  userId String
+
+  type          TransactionType
+  amount        Decimal         @db.Decimal(18, 2)
+  /// Số tiền thực nhận ở `toAccount` — chỉ dùng cho TRANSFER giữa hai tiền tệ khác nhau.
+  receiveAmount Decimal?        @db.Decimal(18, 2)
+  date          DateTime
+  note          String?         @db.Text
+
+  /// Tài khoản nguồn (bắt buộc với mọi loại giao dịch).
+  fromAccountId String
+  /// Tài khoản đích — chỉ dùng cho TRANSFER.
+  toAccountId   String?
+  /// Danh mục — dùng cho INCOME/EXPENSE, null với TRANSFER/BORROW/LEND.
+  categoryId    String?
+  /// Đối tượng vay/cho mượn — bắt buộc với BORROW/LEND.
+  contactId     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isDeleted Boolean  @default(false)
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fromAccount Account   @relation("TransactionFromAccount", fields: [fromAccountId], references: [id], onDelete: Restrict)
+  toAccount   Account?  @relation("TransactionToAccount", fields: [toAccountId], references: [id], onDelete: Restrict)
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  contact     Contact?  @relation(fields: [contactId], references: [id], onDelete: Restrict)
+
+  @@index([userId, isDeleted, date], map: "idx_transaction_user_id_is_deleted_date")
+  @@index([userId, type, date], map: "idx_transaction_user_id_type_date")
+  @@index([userId, categoryId, date], map: "idx_transaction_user_id_category_id_date")
+  @@index([fromAccountId, date], map: "idx_transaction_from_account_id_date")
+  @@index([toAccountId, date], map: "idx_transaction_to_account_id_date")
+  @@index([userId, contactId, date], map: "idx_transaction_user_id_contact_id_date")
+  @@map("transaction")
+}
+
+/// Phiên đăng nhập. Cookie `session` httpOnly chỉ chứa `token`, mọi thông tin khác tra từ đây.
+model Session {
+  id     String @id @default(cuid())
+  userId String
+
+  /// Token ngẫu nhiên 256 bit dạng hex, sinh bằng `crypto.randomBytes`.
+  token     String   @unique(map: "uq_session_token") @db.VarChar(64)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "idx_session_user_id")
+  @@index([expiresAt], map: "idx_session_expires_at")
+  @@map("session")
+}
+
+/// Dữ liệu tham chiếu dùng chung mọi user — không gắn với `userId`.
+model Currency {
+  code String @id @db.VarChar(3)
+
+  name          String
+  symbol        String  @db.VarChar(8)
+  /// Số chữ số thập phân khi hiển thị. VND/JPY/KRW là 0, USD là 2.
+  decimalDigits Int     @default(2)
+  region        String? @db.VarChar(2)
+  /// Thứ tự hiển thị cố định trong sheet chọn tiền tệ.
+  sortOrder     Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sortOrder], map: "idx_currency_sort_order")
+  @@map("currency")
+}
+
+/// `rate` = số đơn vị `base` đổi được từ 1 đơn vị `code`.
+/// base=VND, code=USD, rate=25400 nghĩa là 1 USD = 25 400 VND.
+model ExchangeRate {
+  id String @id @default(cuid())
+
+  base String  @db.VarChar(3)
+  code String  @db.VarChar(3)
+  rate Decimal @db.Decimal(24, 8)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([base, code], map: "uq_exchange_rate_base_code")
+  @@index([base], map: "idx_exchange_rate_base")
+  @@map("exchange_rate")
+}

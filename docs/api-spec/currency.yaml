@@ -1,0 +1,331 @@
+openapi: 3.0.3
+
+info:
+  title: Lab Expense Management — Currency API
+  version: 1.0.0
+  description: |
+    Danh sách đơn vị tiền tệ được hỗ trợ và tỷ giá quy đổi.
+
+    Danh sách tiền tệ là **dữ liệu tham chiếu dùng chung**, không gắn với user — nhưng
+    vẫn yêu cầu đăng nhập để đồng nhất với phần còn lại của API và tránh lộ bề mặt
+    không cần thiết. Nội dung giống nhau với mọi user nên response đặt được cache dài.
+
+servers:
+  - url: /api
+    description: Next.js Route Handlers (cùng origin với frontend)
+
+tags:
+  - name: currency
+    description: Đơn vị tiền tệ và tỷ giá
+
+paths:
+  /currencies:
+    get:
+      tags: [currency]
+      summary: Danh sách đơn vị tiền tệ được hỗ trợ
+      operationId: listCurrencies
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - name: keyword
+          in: query
+          required: false
+          description: Tìm gần đúng theo mã hoặc tên tiền tệ.
+          schema:
+            type: string
+            maxLength: 50
+      responses:
+        '200':
+          description: Danh sách tiền tệ, thứ tự cố định để sheet chọn tiền tệ luôn hiển thị như nhau.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrencyListResponse'
+          headers:
+            Cache-Control:
+              description: Dữ liệu tham chiếu ít đổi, ví dụ `public, max-age=86400`.
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /utility/exchange-rate:
+    get:
+      tags: [currency]
+      summary: Danh sách tỷ giá quy đổi theo tiền tệ mặc định của user
+      operationId: getExchangeRateUtility
+      description: |
+        Dữ liệu cho khối **Exchange rates utility** ở màn Home.
+
+        **Mặc định**: `base` = `defaultCurrency` của user đang đăng nhập, trả về toàn bộ
+        tiền tệ được hỗ trợ trừ chính `base`.
+
+        `rate` là số đơn vị `base` đổi được từ **1 đơn vị** của `code`. Ví dụ với
+        `base=VND`, `USD` có `rate = "25400.00"` nghĩa là 1 USD = 25 400 VND.
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - name: base
+          in: query
+          required: false
+          description: Ghi đè đồng tiền gốc. Bỏ trống = `defaultCurrency` của user.
+          schema:
+            type: string
+            minLength: 3
+            maxLength: 3
+            example: VND
+        - name: codes
+          in: query
+          required: false
+          description: Giới hạn kết quả ở các mã tiền tệ này, phân tách bằng dấu phẩy.
+          schema:
+            type: string
+            example: USD,EUR,JPY
+      responses:
+        '200':
+          description: Danh sách tỷ giá.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExchangeRateListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+
+    PageSizeParam:
+      name: pageSize
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 50
+
+  schemas:
+    ErrorDetail:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          example: VALIDATION_ERROR
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorDetail'
+
+    PaginationMeta:
+      type: object
+      required: [page, pageSize, total]
+      properties:
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 50
+        total:
+          type: integer
+          example: 9
+
+    DecimalAmount:
+      type: string
+      description: Số dạng chuỗi decimal, giữ nguyên độ chính xác của server.
+      pattern: '^-?\d{1,16}(\.\d{1,8})?$'
+      example: '25400.00'
+
+    Currency:
+      type: object
+      required: [code, name, symbol, decimalDigits]
+      properties:
+        code:
+          type: string
+          description: Mã ISO 4217.
+          minLength: 3
+          maxLength: 3
+          example: VND
+        name:
+          type: string
+          example: Việt Nam Đồng
+        symbol:
+          type: string
+          example: đ
+        decimalDigits:
+          type: integer
+          description: Số chữ số thập phân khi hiển thị. VND và JPY là `0`, USD là `2`.
+          minimum: 0
+          maximum: 4
+          example: 0
+        region:
+          type: string
+          nullable: true
+          description: Mã vùng hiển thị kèm, ví dụ `VN`.
+          example: VN
+
+    CurrencyListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Currency'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    ExchangeRate:
+      type: object
+      required: [code, base, rate, updatedAt]
+      properties:
+        code:
+          type: string
+          minLength: 3
+          maxLength: 3
+          example: USD
+        base:
+          type: string
+          minLength: 3
+          maxLength: 3
+          example: VND
+        symbol:
+          type: string
+          example: $
+        region:
+          type: string
+          nullable: true
+          example: US
+        rate:
+          $ref: '#/components/schemas/DecimalAmount'
+        updatedAt:
+          type: string
+          format: date-time
+          description: Thời điểm tỷ giá được cập nhật lần cuối.
+          example: '2026-08-15T09:30:00Z'
+
+    ExchangeRateListMeta:
+      allOf:
+        - $ref: '#/components/schemas/PaginationMeta'
+        - type: object
+          required: [base]
+          properties:
+            base:
+              type: string
+              minLength: 3
+              maxLength: 3
+              example: VND
+
+    ExchangeRateListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExchangeRate'
+        meta:
+          $ref: '#/components/schemas/ExchangeRateListMeta'
+
+  responses:
+    BadRequest:
+      description: Tham số không hợp lệ (`base` hoặc `codes` sai định dạng ISO 4217).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: VALIDATION_ERROR
+              message: Mã tiền tệ không hợp lệ.
+              details:
+                base: Mã tiền tệ phải gồm đúng 3 ký tự.
+
+    Unauthorized:
+      description: Chưa đăng nhập hoặc phiên đã hết hạn.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: UNAUTHORIZED
+              message: Vui lòng đăng nhập để tiếp tục.
+              details: {}
+
+    Forbidden:
+      description: Không có quyền truy cập dữ liệu tiền tệ.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: FORBIDDEN
+              message: Bạn không có quyền xem dữ liệu này.
+              details: {}
+
+    NotFound:
+      description: Không hỗ trợ đồng tiền gốc hoặc mã tiền tệ được yêu cầu.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: CURRENCY_NOT_SUPPORTED
+              message: Chưa hỗ trợ đồng tiền này.
+              details:
+                base: XYZ
+
+    InternalError:
+      description: Lỗi không mong đợi phía server.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: INTERNAL_ERROR
+              message: Đã có lỗi xảy ra, vui lòng thử lại sau.
+              details: {}
+
+security:
+  - sessionCookie: []

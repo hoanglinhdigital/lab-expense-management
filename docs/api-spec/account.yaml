@@ -1,0 +1,656 @@
+openapi: 3.0.3
+
+info:
+  title: Lab Expense Management — Account API
+  version: 1.0.0
+  description: |
+    CRUD nguồn tiền (ví, tài khoản ngân hàng, thẻ...) của người dùng đang đăng nhập
+    và tính số dư hiện tại.
+
+    **Số dư hiện tại** = `initialBalance`
+      + tổng `amount` của INCOME và BORROW có `fromAccountId` = account này
+      + tổng `amount` của TRANSFER có `toAccountId` = account này
+      − tổng `amount` của EXPENSE và LEND có `fromAccountId` = account này
+      − tổng `amount` của TRANSFER có `fromAccountId` = account này
+
+    Chỉ tính transaction có `isDeleted = false`. Mọi endpoint đều lọc theo `userId`
+    lấy từ session — không có endpoint nào nhận `userId` từ client.
+
+servers:
+  - url: /api
+    description: Next.js Route Handlers (cùng origin với frontend)
+
+tags:
+  - name: account
+    description: Nguồn tiền và số dư
+
+paths:
+  /accounts:
+    get:
+      tags: [account]
+      summary: Danh sách nguồn tiền của người dùng hiện tại
+      operationId: listAccounts
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - name: type
+          in: query
+          required: false
+          description: Lọc theo loại nguồn tiền. Truyền nhiều lần để lọc nhiều loại.
+          schema:
+            $ref: '#/components/schemas/AccountType'
+        - name: currency
+          in: query
+          required: false
+          description: Lọc theo mã tiền tệ ISO 4217.
+          schema:
+            type: string
+            minLength: 3
+            maxLength: 3
+        - name: keyword
+          in: query
+          required: false
+          description: Tìm gần đúng theo tên nguồn tiền.
+          schema:
+            type: string
+            maxLength: 50
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [name_asc, name_desc, balance_asc, balance_desc, created_asc, created_desc]
+            default: created_desc
+      responses:
+        '200':
+          description: Danh sách nguồn tiền kèm số dư hiện tại.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      tags: [account]
+      summary: Tạo nguồn tiền mới
+      operationId: createAccount
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAccountRequest'
+      responses:
+        '201':
+          description: Nguồn tiền vừa tạo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /accounts/summary:
+    get:
+      tags: [account]
+      summary: Tổng quan số dư, gom nhóm theo loại nguồn tiền
+      operationId: getAccountSummary
+      description: |
+        Dữ liệu cho phần đầu màn hình Account: tổng số dư quy về một loại tiền tệ
+        và danh sách nhóm theo `AccountType`.
+      parameters:
+        - name: currency
+          in: query
+          required: false
+          description: Tiền tệ quy đổi cho `totalBalance`. Mặc định là `defaultCurrency` của user.
+          schema:
+            type: string
+            minLength: 3
+            maxLength: 3
+      responses:
+        '200':
+          description: Tổng quan nguồn tiền.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountSummaryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /accounts/{accountId}:
+    parameters:
+      - $ref: '#/components/parameters/AccountIdParam'
+
+    get:
+      tags: [account]
+      summary: Chi tiết một nguồn tiền
+      operationId: getAccountById
+      responses:
+        '200':
+          description: Chi tiết nguồn tiền.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    patch:
+      tags: [account]
+      summary: Cập nhật nguồn tiền
+      operationId: updateAccount
+      description: |
+        Chỉ gửi những field cần đổi. Đổi `initialBalance` sẽ làm số dư hiện tại
+        thay đổi tương ứng — dùng cho nghiệp vụ chỉnh số dư (Adjustment).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAccountRequest'
+      responses:
+        '200':
+          description: Nguồn tiền sau khi cập nhật.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      tags: [account]
+      summary: Xoá mềm nguồn tiền
+      operationId: deleteAccount
+      description: |
+        Đặt `isDeleted = true`. Nếu nguồn tiền còn transaction chưa xoá thì trả `409`
+        — quan hệ trong Prisma là `onDelete: Restrict`, xoá đi sẽ làm hỏng lịch sử.
+      responses:
+        '204':
+          description: Đã xoá.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Nguồn tiền còn giao dịch nên không xoá được.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: ACCOUNT_HAS_TRANSACTIONS
+                  message: Không thể xoá nguồn tiền đang có giao dịch.
+                  details:
+                    transactionCount: 12
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /accounts/{accountId}/balance:
+    parameters:
+      - $ref: '#/components/parameters/AccountIdParam'
+
+    get:
+      tags: [account]
+      summary: Số dư hiện tại của một nguồn tiền
+      operationId: getAccountBalance
+      description: |
+        Trả số dư tại thời điểm `asOf` (mặc định là hiện tại) kèm thành phần cấu thành
+        để màn hình đối soát hiển thị được chi tiết.
+      parameters:
+        - name: asOf
+          in: query
+          required: false
+          description: Tính số dư tới hết thời điểm này (ISO 8601 UTC). Bỏ trống = hiện tại.
+          schema:
+            type: string
+            format: date-time
+            example: '2026-08-15T09:30:00Z'
+      responses:
+        '200':
+          description: Số dư hiện tại.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountBalanceResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+
+    PageSizeParam:
+      name: pageSize
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+    AccountIdParam:
+      name: accountId
+      in: path
+      required: true
+      schema:
+        type: string
+      example: clx8h2k9p0001qw3f8n1a2b3c
+
+  schemas:
+    ErrorDetail:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          example: VALIDATION_ERROR
+        message:
+          type: string
+          example: Dữ liệu không hợp lệ.
+        details:
+          type: object
+          additionalProperties: true
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorDetail'
+
+    PaginationMeta:
+      type: object
+      required: [page, pageSize, total]
+      properties:
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 20
+        total:
+          type: integer
+          description: Tổng số bản ghi khớp bộ lọc, không phải số bản ghi trong trang.
+          example: 7
+
+    AccountType:
+      type: string
+      description: Khớp enum `AccountType` trong `prisma/schema.prisma`.
+      enum:
+        - CASH
+        - BANK_ACCOUNT
+        - SAVING_ACCOUNT
+        - E_WALLET
+        - CREDIT_CARD
+        - IC_CARD
+        - INVESTMENT
+        - OTHER
+
+    DecimalAmount:
+      type: string
+      description: Số tiền dạng chuỗi decimal, tối đa 2 chữ số thập phân. Không dùng `number` để tránh sai số floating point.
+      pattern: '^-?\d{1,16}(\.\d{1,2})?$'
+      example: '150000.00'
+
+    Account:
+      type: object
+      required:
+        - id
+        - name
+        - type
+        - initialBalance
+        - currentBalance
+        - currency
+        - isDefault
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          example: clx8h2k9p0001qw3f8n1a2b3c
+        name:
+          type: string
+          example: Ví tiền mặt
+        type:
+          $ref: '#/components/schemas/AccountType'
+        initialBalance:
+          $ref: '#/components/schemas/DecimalAmount'
+        currentBalance:
+          allOf:
+            - $ref: '#/components/schemas/DecimalAmount'
+          description: Số dư đã cộng/trừ toàn bộ giao dịch chưa xoá.
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          example: VND
+        icon:
+          type: string
+          nullable: true
+          description: Emoji hoặc mã icon do người dùng chọn.
+          example: 💵
+        description:
+          type: string
+          nullable: true
+          description: Ghi chú ngắn hiển thị dưới tên nguồn tiền.
+        isDefault:
+          type: boolean
+          description: Nguồn tiền chọn sẵn khi mở form ghi giao dịch. Mỗi user chỉ có tối đa một.
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+          example: '2026-08-15T09:30:00Z'
+        updatedAt:
+          type: string
+          format: date-time
+          example: '2026-08-15T09:30:00Z'
+
+    AccountResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/Account'
+
+    AccountListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Account'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    AccountGroup:
+      type: object
+      required: [type, label, subtotal, accounts]
+      properties:
+        type:
+          $ref: '#/components/schemas/AccountType'
+        label:
+          type: string
+          description: Nhãn hiển thị của nhóm.
+          example: Tiền mặt
+        subtotal:
+          allOf:
+            - $ref: '#/components/schemas/DecimalAmount'
+          description: Tổng số dư của nhóm, đã quy về `currency` của summary.
+        accounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Account'
+
+    AccountSummary:
+      type: object
+      required: [totalBalance, currency, groups]
+      properties:
+        totalBalance:
+          allOf:
+            - $ref: '#/components/schemas/DecimalAmount'
+          description: Tổng số dư mọi nguồn tiền, đã quy đổi về `currency`.
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          example: VND
+        groups:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccountGroup'
+
+    AccountSummaryResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/AccountSummary'
+
+    AccountBalance:
+      type: object
+      required:
+        - accountId
+        - currency
+        - initialBalance
+        - totalIn
+        - totalOut
+        - currentBalance
+        - asOf
+      properties:
+        accountId:
+          type: string
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+        initialBalance:
+          $ref: '#/components/schemas/DecimalAmount'
+        totalIn:
+          allOf:
+            - $ref: '#/components/schemas/DecimalAmount'
+          description: Tổng tiền vào (INCOME, BORROW, TRANSFER đến account này).
+        totalOut:
+          allOf:
+            - $ref: '#/components/schemas/DecimalAmount'
+          description: Tổng tiền ra (EXPENSE, LEND, TRANSFER đi khỏi account này).
+        currentBalance:
+          $ref: '#/components/schemas/DecimalAmount'
+        asOf:
+          type: string
+          format: date-time
+          example: '2026-08-15T09:30:00Z'
+
+    AccountBalanceResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/AccountBalance'
+
+    CreateAccountRequest:
+      type: object
+      required: [name, type, currency]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          example: Ví tiền mặt
+        type:
+          $ref: '#/components/schemas/AccountType'
+        initialBalance:
+          allOf:
+            - $ref: '#/components/schemas/DecimalAmount'
+          default: '0.00'
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          example: VND
+        icon:
+          type: string
+          nullable: true
+          maxLength: 32
+        description:
+          type: string
+          nullable: true
+          maxLength: 200
+        isDefault:
+          type: boolean
+          default: false
+          description: Đặt `true` sẽ tự bỏ cờ mặc định ở nguồn tiền cũ trong cùng transaction.
+
+    UpdateAccountRequest:
+      type: object
+      minProperties: 1
+      description: Chỉ gửi field cần đổi. Không cho đổi `currency` khi account đã có giao dịch (trả `409`).
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        type:
+          $ref: '#/components/schemas/AccountType'
+        initialBalance:
+          $ref: '#/components/schemas/DecimalAmount'
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+        icon:
+          type: string
+          nullable: true
+          maxLength: 32
+        description:
+          type: string
+          nullable: true
+          maxLength: 200
+        isDefault:
+          type: boolean
+
+  responses:
+    BadRequest:
+      description: Dữ liệu gửi lên không hợp lệ.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: VALIDATION_ERROR
+              message: Dữ liệu không hợp lệ.
+              details:
+                name: Tên nguồn tiền không được để trống.
+
+    Unauthorized:
+      description: Chưa đăng nhập hoặc phiên đã hết hạn.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: UNAUTHORIZED
+              message: Vui lòng đăng nhập để tiếp tục.
+              details: {}
+
+    Forbidden:
+      description: Nguồn tiền thuộc về người dùng khác.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: FORBIDDEN
+              message: Bạn không có quyền thao tác trên nguồn tiền này.
+              details: {}
+
+    NotFound:
+      description: Không tìm thấy nguồn tiền.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: ACCOUNT_NOT_FOUND
+              message: Không tìm thấy nguồn tiền.
+              details: {}
+
+    Conflict:
+      description: Trùng tên nguồn tiền trong cùng một người dùng.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: ACCOUNT_NAME_DUPLICATED
+              message: Bạn đã có nguồn tiền cùng tên.
+              details:
+                name: Ví tiền mặt
+
+    InternalError:
+      description: Lỗi không mong đợi phía server.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: INTERNAL_ERROR
+              message: Đã có lỗi xảy ra, vui lòng thử lại sau.
+              details: {}
+
+security:
+  - sessionCookie: []

@@ -1,0 +1,827 @@
+openapi: 3.0.3
+
+info:
+  title: Lab Expense Management — Report API
+  version: 2.0.0
+  description: |
+    Báo cáo tổng hợp. Mọi endpoint chỉ đọc, chỉ tính trên dữ liệu của user đang
+    đăng nhập và chỉ tính transaction có `isDeleted = false`.
+
+    Màn Home gọi **6 endpoint độc lập** thay vì một endpoint tổng hợp: 5 endpoint
+    trong file này (`total-balance`, `expense-vs-income`, `expense-by-category`,
+    `expense-analysis`, `money-lend-borrow`) và `GET /utility/exchange-rate` trong
+    `currency.yaml`. Nhờ vậy mỗi khối trên màn hình tự loading/lỗi/retry riêng, và
+    đổi bộ lọc của một khối không phải tải lại cả trang.
+
+    **Quy ước kỳ báo cáo**: `dateFrom`/`dateTo` là ISO 8601 UTC, bao gồm cả hai mốc.
+    Bỏ trống thì server tự tính mặc định của từng endpoint theo `timezone` truyền
+    vào (mặc định `Asia/Ho_Chi_Minh`) — việc cắt mốc ngày/tháng phải theo giờ địa
+    phương, nếu không giao dịch lúc 23h cuối tháng sẽ rơi nhầm sang tháng sau.
+
+    **Quy ước loại giao dịch**: chỉ `INCOME` tính là tiền vào và `EXPENSE` tính là
+    tiền ra. `TRANSFER` bị loại khỏi mọi báo cáo thu/chi (chuyển tiền nội bộ không
+    phải thu/chi). `BORROW`/`LEND` không tính vào thu/chi mà đưa vào công nợ ở
+    `/report/overview` và `/report/money-lend-borrow`.
+
+servers:
+  - url: /api
+    description: Next.js Route Handlers (cùng origin với frontend)
+
+tags:
+  - name: report
+    description: Báo cáo tổng hợp — số dư, thu/chi, danh mục, theo tháng, công nợ
+
+paths:
+  /report/total-balance:
+    get:
+      tags: [report]
+      summary: Tổng số dư của toàn bộ nguồn tiền
+      operationId: getTotalBalance
+      description: |
+        Dữ liệu cho thẻ **Total Balance** ở đầu màn Home.
+
+        `total` = tổng số dư hiện tại của mọi nguồn tiền chưa xoá, đã quy đổi về
+        `currency`. Công thức số dư từng nguồn tiền xem `account.yaml`.
+
+        `byCurrency` liệt kê số dư gốc theo từng loại tiền tệ trước khi quy đổi, để
+        màn hình đối chiếu được khi user có nhiều tiền tệ.
+      parameters:
+        - $ref: '#/components/parameters/TimezoneParam'
+        - $ref: '#/components/parameters/CurrencyParam'
+        - name: asOf
+          in: query
+          required: false
+          description: Tính số dư tới hết thời điểm này. Bỏ trống = hiện tại.
+          schema:
+            type: string
+            format: date-time
+            example: '2026-08-15T09:30:00Z'
+      responses:
+        '200':
+          description: Tổng số dư.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TotalBalanceResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /report/expense-vs-income:
+    get:
+      tags: [report]
+      summary: Tổng thu và tổng chi trong một kỳ
+      operationId: getExpenseVsIncome
+      description: |
+        Dữ liệu cho khối **Expense vs income** (2 cột + 3 dòng số liệu Income /
+        Expense / Different).
+
+        **Mặc định**: từ ngày 1 đến ngày cuối cùng của **tháng hiện tại** theo
+        `timezone`. Truyền `dateFrom`/`dateTo` để xem kỳ khác; truyền một trong hai
+        thì phần còn lại vẫn lấy theo mặc định của tháng hiện tại.
+      parameters:
+        - $ref: '#/components/parameters/DateFromParam'
+        - $ref: '#/components/parameters/DateToParam'
+        - $ref: '#/components/parameters/TimezoneParam'
+        - $ref: '#/components/parameters/CurrencyParam'
+        - $ref: '#/components/parameters/AccountIdFilterParam'
+      responses:
+        '200':
+          description: Tổng thu/chi của kỳ.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpenseVsIncomeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /report/expense-by-category:
+    get:
+      tags: [report]
+      summary: Chi tiêu gom theo danh mục cha (level 1)
+      operationId: getExpenseByCategory
+      description: |
+        Dữ liệu cho donut **tỷ trọng chi tiêu**. Luôn gom về **danh mục cha level 1**:
+        chi tiêu của danh mục con được cộng vào danh mục cha, response không bao giờ
+        chứa danh mục có `parentId != null`.
+
+        Giao dịch không gắn danh mục gom vào một mục `categoryId = null`.
+        Sắp xếp giảm dần theo `amount`.
+
+        **Mặc định kỳ**: từ ngày 1 đến ngày cuối cùng của tháng hiện tại theo `timezone`.
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - $ref: '#/components/parameters/DateFromParam'
+        - $ref: '#/components/parameters/DateToParam'
+        - $ref: '#/components/parameters/TimezoneParam'
+        - $ref: '#/components/parameters/CurrencyParam'
+        - $ref: '#/components/parameters/AccountIdFilterParam'
+        - name: flow
+          in: query
+          required: false
+          description: '`EXPENSE` cho donut chi tiêu, `INCOME` để dùng lại cho biểu đồ thu nhập.'
+          schema:
+            type: string
+            enum: [EXPENSE, INCOME]
+            default: EXPENSE
+      responses:
+        '200':
+          description: Tổng hợp theo danh mục cha.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryBreakdownResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /report/expense-analysis:
+    get:
+      tags: [report]
+      summary: Chi tiêu gom theo tháng
+      operationId: getExpenseAnalysis
+      description: |
+        Dữ liệu cho biểu đồ cột **Expense analysis**.
+
+        **Mặc định**: 6 tháng gần nhất tính cả tháng hiện tại, theo `timezone`.
+
+        Mỗi tháng trong khoảng đều có một phần tử, kể cả tháng không phát sinh giao
+        dịch (trả `"0.00"`) — biểu đồ cột cần đủ mốc trục X, thiếu tháng sẽ vẽ sai
+        khoảng cách. Thứ tự cũ → mới.
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - $ref: '#/components/parameters/TimezoneParam'
+        - $ref: '#/components/parameters/CurrencyParam'
+        - $ref: '#/components/parameters/AccountIdFilterParam'
+        - name: months
+          in: query
+          required: false
+          description: Số tháng gần nhất. Bỏ qua nếu truyền `dateFrom`/`dateTo`.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 60
+            default: 6
+        - $ref: '#/components/parameters/DateFromParam'
+        - $ref: '#/components/parameters/DateToParam'
+        - name: categoryId
+          in: query
+          required: false
+          description: Chỉ tính giao dịch thuộc danh mục này (gồm cả danh mục con của nó).
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Chi tiêu và thu nhập theo từng tháng.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonthlySummaryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /report/money-lend-borrow:
+    get:
+      tags: [report]
+      summary: Danh sách khoản cho mượn / đi mượn
+      operationId: getMoneyLendBorrow
+      description: |
+        Dữ liệu cho khối **Money lent/borrowed**.
+
+        **Mặc định**: 5 giao dịch `LEND`/`BORROW` có số tiền **lớn nhất**
+        (`pageSize=5`, `sort=amount_desc`), không giới hạn khoảng thời gian.
+
+        `meta` kèm tổng đã cho mượn và tổng đang đi mượn của **toàn bộ** kết quả khớp
+        bộ lọc, để màn hình hiện dòng tổng mà không phải gọi thêm API.
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 5
+        - $ref: '#/components/parameters/DateFromParam'
+        - $ref: '#/components/parameters/DateToParam'
+        - $ref: '#/components/parameters/TimezoneParam'
+        - $ref: '#/components/parameters/CurrencyParam'
+        - $ref: '#/components/parameters/AccountIdFilterParam'
+        - name: kind
+          in: query
+          required: false
+          description: Bỏ trống = lấy cả hai chiều.
+          schema:
+            type: string
+            enum: [LEND, BORROW]
+        - name: contactId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [amount_desc, amount_asc, date_desc, date_asc]
+            default: amount_desc
+      responses:
+        '200':
+          description: Danh sách khoản vay/cho mượn.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MoneyLendBorrowResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /report/overview:
+    get:
+      tags: [report]
+      summary: Bảng cân đối và thu/chi theo từng kỳ
+      operationId: getReportOverview
+      description: |
+        Dữ liệu cho **màn Report** (không phải màn Home): giá trị ròng và thu/chi của
+        các kỳ Today / This week / This month / This year.
+
+        - `assets` = tổng số dư dương của mọi nguồn tiền + tổng khoản đã cho mượn (`LEND`).
+        - `liabilities` = tổng số dư âm (thẻ tín dụng) + tổng khoản đang đi mượn (`BORROW`).
+      parameters:
+        - $ref: '#/components/parameters/TimezoneParam'
+        - $ref: '#/components/parameters/CurrencyParam'
+      responses:
+        '200':
+          description: Bảng cân đối và thu/chi theo kỳ.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportOverviewResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+
+    PageSizeParam:
+      name: pageSize
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 50
+
+    DateFromParam:
+      name: dateFrom
+      in: query
+      required: false
+      description: Mốc đầu kỳ (ISO 8601 UTC, bao gồm mốc).
+      schema:
+        type: string
+        format: date-time
+        example: '2026-08-01T00:00:00Z'
+
+    DateToParam:
+      name: dateTo
+      in: query
+      required: false
+      description: Mốc cuối kỳ (ISO 8601 UTC, bao gồm mốc).
+      schema:
+        type: string
+        format: date-time
+        example: '2026-08-31T23:59:59Z'
+
+    TimezoneParam:
+      name: timezone
+      in: query
+      required: false
+      description: Múi giờ IANA dùng để cắt mốc ngày/tháng.
+      schema:
+        type: string
+        default: Asia/Ho_Chi_Minh
+        example: Asia/Ho_Chi_Minh
+
+    CurrencyParam:
+      name: currency
+      in: query
+      required: false
+      description: Tiền tệ quy đổi cho mọi số tiền trong báo cáo. Mặc định `defaultCurrency` của user.
+      schema:
+        type: string
+        minLength: 3
+        maxLength: 3
+        example: VND
+
+    AccountIdFilterParam:
+      name: accountId
+      in: query
+      required: false
+      description: Chỉ tính giao dịch thuộc nguồn tiền này. Bỏ trống = mọi nguồn tiền.
+      schema:
+        type: string
+
+  schemas:
+    ErrorDetail:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          example: VALIDATION_ERROR
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorDetail'
+
+    PaginationMeta:
+      type: object
+      required: [page, pageSize, total]
+      properties:
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 50
+        total:
+          type: integer
+          description: Tổng số bản ghi khớp bộ lọc, không phải số bản ghi trong trang.
+          example: 8
+
+    DecimalAmount:
+      type: string
+      description: Số tiền dạng chuỗi decimal, tối đa 2 chữ số thập phân.
+      pattern: '^-?\d{1,16}(\.\d{1,2})?$'
+      example: '150000.00'
+
+    PeriodRange:
+      type: object
+      description: Kỳ báo cáo thực tế server đã áp dụng — frontend hiển thị lại để người dùng đối chiếu.
+      required: [dateFrom, dateTo, timezone, currency]
+      properties:
+        dateFrom:
+          type: string
+          format: date-time
+          example: '2026-08-01T00:00:00Z'
+        dateTo:
+          type: string
+          format: date-time
+          example: '2026-08-31T23:59:59Z'
+        timezone:
+          type: string
+          example: Asia/Ho_Chi_Minh
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          example: VND
+
+    CurrencyBalance:
+      type: object
+      description: Số dư gốc theo một loại tiền tệ, trước khi quy đổi.
+      required: [currency, balance, accountCount]
+      properties:
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          example: USD
+        balance:
+          $ref: '#/components/schemas/DecimalAmount'
+        accountCount:
+          type: integer
+          example: 2
+
+    TotalBalance:
+      type: object
+      required: [total, currency, accountCount, byCurrency, asOf]
+      properties:
+        total:
+          allOf:
+            - $ref: '#/components/schemas/DecimalAmount'
+          description: Tổng số dư mọi nguồn tiền, đã quy về `currency`. Có thể âm nếu dư nợ thẻ vượt số dư.
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          example: VND
+        accountCount:
+          type: integer
+          description: Số nguồn tiền chưa xoá. Bằng `0` thì frontend hiện empty state kèm CTA tạo nguồn tiền.
+          example: 4
+        byCurrency:
+          type: array
+          items:
+            $ref: '#/components/schemas/CurrencyBalance'
+        asOf:
+          type: string
+          format: date-time
+          example: '2026-08-15T09:30:00Z'
+
+    TotalBalanceResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/TotalBalance'
+
+    ExpenseVsIncome:
+      type: object
+      required: [income, expense, net, transactionCount, range]
+      properties:
+        income:
+          $ref: '#/components/schemas/DecimalAmount'
+        expense:
+          $ref: '#/components/schemas/DecimalAmount'
+        net:
+          allOf:
+            - $ref: '#/components/schemas/DecimalAmount'
+          description: '`income − expense` (dòng "Different"), có thể âm.'
+        transactionCount:
+          type: integer
+          description: Số giao dịch INCOME + EXPENSE trong kỳ. Bằng `0` thì frontend hiện empty state.
+          example: 42
+        range:
+          $ref: '#/components/schemas/PeriodRange'
+
+    ExpenseVsIncomeResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/ExpenseVsIncome'
+
+    CategoryBreakdownItem:
+      type: object
+      required: [categoryId, name, amount, percentage, transactionCount]
+      properties:
+        categoryId:
+          type: string
+          nullable: true
+          description: '`null` cho nhóm "Chưa phân loại" — giao dịch không gắn danh mục.'
+          example: clx8h2k9p0002qw3f8n1a2b3c
+        name:
+          type: string
+          example: Ăn uống
+        icon:
+          type: string
+          nullable: true
+          example: 🍜
+        color:
+          type: string
+          nullable: true
+          example: '#e11d48'
+        amount:
+          allOf:
+            - $ref: '#/components/schemas/DecimalAmount'
+          description: Đã cộng gộp chi tiêu của mọi danh mục con thuộc danh mục cha này.
+        percentage:
+          type: number
+          format: double
+          description: Tỷ trọng trên `meta.totalAmount`, đơn vị phần trăm, làm tròn 2 chữ số thập phân.
+          example: 50.98
+        transactionCount:
+          type: integer
+          example: 24
+
+    CategoryBreakdownMeta:
+      allOf:
+        - $ref: '#/components/schemas/PaginationMeta'
+        - type: object
+          required: [range, totalAmount]
+          properties:
+            range:
+              $ref: '#/components/schemas/PeriodRange'
+            totalAmount:
+              allOf:
+                - $ref: '#/components/schemas/DecimalAmount'
+              description: Tổng của **toàn bộ** danh mục khớp bộ lọc, dùng làm mẫu số cho `percentage`.
+
+    CategoryBreakdownResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategoryBreakdownItem'
+        meta:
+          $ref: '#/components/schemas/CategoryBreakdownMeta'
+
+    MonthlySummaryItem:
+      type: object
+      required: [month, income, expense, net, transactionCount]
+      properties:
+        month:
+          type: string
+          description: Tháng theo `timezone` đã chọn, định dạng `yyyy-MM`.
+          pattern: '^\d{4}-\d{2}$'
+          example: '2026-08'
+        income:
+          $ref: '#/components/schemas/DecimalAmount'
+        expense:
+          $ref: '#/components/schemas/DecimalAmount'
+        net:
+          allOf:
+            - $ref: '#/components/schemas/DecimalAmount'
+          description: '`income − expense`, có thể âm.'
+        transactionCount:
+          type: integer
+          example: 42
+
+    MonthlySummaryMeta:
+      allOf:
+        - $ref: '#/components/schemas/PaginationMeta'
+        - type: object
+          required: [range, totalIncome, totalExpense]
+          properties:
+            range:
+              $ref: '#/components/schemas/PeriodRange'
+            totalIncome:
+              $ref: '#/components/schemas/DecimalAmount'
+            totalExpense:
+              $ref: '#/components/schemas/DecimalAmount'
+
+    MonthlySummaryResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/MonthlySummaryItem'
+        meta:
+          $ref: '#/components/schemas/MonthlySummaryMeta'
+
+    LoanItem:
+      type: object
+      required: [id, kind, amount, currency, date]
+      properties:
+        id:
+          type: string
+          description: Id của transaction gốc, bấm vào để mở màn chi tiết giao dịch.
+          example: clx8h2k9p0003qw3f8n1a2b3c
+        kind:
+          type: string
+          description: '`LEND` = mình cho mượn (tiền ra), `BORROW` = mình đi mượn (tiền vào).'
+          enum: [LEND, BORROW]
+        contactId:
+          type: string
+          nullable: true
+        contactName:
+          type: string
+          nullable: true
+          example: Anh Minh
+        note:
+          type: string
+          nullable: true
+        amount:
+          allOf:
+            - $ref: '#/components/schemas/DecimalAmount'
+          description: Số tiền dương, đã quy về `meta.range.currency`.
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          example: VND
+        accountId:
+          type: string
+          description: Nguồn tiền phát sinh khoản vay/cho mượn.
+        accountName:
+          type: string
+          example: Ví tiền mặt
+        date:
+          type: string
+          format: date-time
+          example: '2026-08-10T03:00:00Z'
+
+    MoneyLendBorrowMeta:
+      allOf:
+        - $ref: '#/components/schemas/PaginationMeta'
+        - type: object
+          required: [range, totalLend, totalBorrow]
+          properties:
+            range:
+              $ref: '#/components/schemas/PeriodRange'
+            totalLend:
+              allOf:
+                - $ref: '#/components/schemas/DecimalAmount'
+              description: Tổng đã cho mượn của **toàn bộ** kết quả khớp bộ lọc.
+            totalBorrow:
+              allOf:
+                - $ref: '#/components/schemas/DecimalAmount'
+              description: Tổng đang đi mượn của **toàn bộ** kết quả khớp bộ lọc.
+
+    MoneyLendBorrowResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/LoanItem'
+        meta:
+          $ref: '#/components/schemas/MoneyLendBorrowMeta'
+
+    FinancialStatement:
+      type: object
+      required: [netWorth, assets, liabilities]
+      properties:
+        netWorth:
+          allOf:
+            - $ref: '#/components/schemas/DecimalAmount'
+          description: '`assets − liabilities`, có thể âm.'
+        assets:
+          $ref: '#/components/schemas/DecimalAmount'
+        liabilities:
+          $ref: '#/components/schemas/DecimalAmount'
+
+    PeriodFlow:
+      type: object
+      required: [id, label, dateFrom, dateTo, income, expense, net]
+      properties:
+        id:
+          type: string
+          enum: [today, this_week, this_month, this_year]
+          example: this_month
+        label:
+          type: string
+          example: Tháng này
+        dateFrom:
+          type: string
+          format: date-time
+        dateTo:
+          type: string
+          format: date-time
+        income:
+          $ref: '#/components/schemas/DecimalAmount'
+        expense:
+          $ref: '#/components/schemas/DecimalAmount'
+        net:
+          $ref: '#/components/schemas/DecimalAmount'
+
+    ReportOverview:
+      type: object
+      required: [statement, periods, currency, timezone]
+      properties:
+        statement:
+          $ref: '#/components/schemas/FinancialStatement'
+        periods:
+          type: array
+          description: Cố định 4 kỳ theo thứ tự today → this_year.
+          items:
+            $ref: '#/components/schemas/PeriodFlow'
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          example: VND
+        timezone:
+          type: string
+          example: Asia/Ho_Chi_Minh
+
+    ReportOverviewResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/ReportOverview'
+
+  responses:
+    BadRequest:
+      description: Tham số kỳ báo cáo không hợp lệ (`dateFrom` sau `dateTo`, `timezone` sai, `currency` không hỗ trợ).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: VALIDATION_ERROR
+              message: Khoảng thời gian không hợp lệ.
+              details:
+                dateFrom: Ngày bắt đầu phải trước ngày kết thúc.
+
+    Unauthorized:
+      description: Chưa đăng nhập hoặc phiên đã hết hạn.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: UNAUTHORIZED
+              message: Vui lòng đăng nhập để tiếp tục.
+              details: {}
+
+    Forbidden:
+      description: Bộ lọc trỏ tới nguồn tiền, danh mục hoặc đối tượng của người dùng khác.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: FORBIDDEN
+              message: Bạn không có quyền xem dữ liệu này.
+              details: {}
+
+    NotFound:
+      description: Không tìm thấy nguồn tiền, danh mục hoặc đối tượng dùng trong bộ lọc.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: NOT_FOUND
+              message: Không tìm thấy dữ liệu dùng trong bộ lọc.
+              details:
+                accountId: clx8h2k9p0001qw3f8n1a2b3c
+
+    InternalError:
+      description: Lỗi không mong đợi phía server.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: INTERNAL_ERROR
+              message: Đã có lỗi xảy ra, vui lòng thử lại sau.
+              details: {}
+
+security:
+  - sessionCookie: []

@@ -1,0 +1,366 @@
+openapi: 3.0.3
+
+info:
+  title: Lab Expense Management — Auth API
+  version: 1.0.0
+  description: |
+    Đăng ký, đăng nhập, đăng xuất và lấy thông tin người dùng hiện tại.
+
+    Xác thực dùng **session cookie httpOnly** (`session`). Server set cookie ở
+    `POST /auth/register` và `POST /auth/login`, xoá cookie ở `POST /auth/logout`.
+    Frontend không đọc được cookie (httpOnly) nên mọi request chỉ cần
+    `credentials: "include"`.
+
+servers:
+  - url: /api
+    description: Next.js Route Handlers (cùng origin với frontend)
+
+tags:
+  - name: auth
+    description: Đăng ký, đăng nhập, phiên làm việc
+
+paths:
+  /auth/register:
+    post:
+      tags: [auth]
+      summary: Đăng ký tài khoản mới
+      operationId: registerUser
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Đăng ký thành công. Server set cookie `session`.
+          headers:
+            Set-Cookie:
+              description: Cookie phiên httpOnly, ví dụ `session=<token>; HttpOnly; Path=/; SameSite=Lax`.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Email đã được sử dụng.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: EMAIL_ALREADY_EXISTS
+                  message: Email này đã được đăng ký.
+                  details: {}
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: Đăng nhập bằng email và mật khẩu
+      operationId: loginUser
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Đăng nhập thành công. Server set cookie `session`.
+          headers:
+            Set-Cookie:
+              description: Cookie phiên httpOnly.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Sai email hoặc mật khẩu. Không phân biệt hai trường hợp để tránh dò email.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: INVALID_CREDENTIALS
+                  message: Email hoặc mật khẩu không đúng.
+                  details: {}
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /auth/logout:
+    post:
+      tags: [auth]
+      summary: Đăng xuất, huỷ phiên hiện tại
+      operationId: logoutUser
+      responses:
+        '204':
+          description: Đã đăng xuất. Server trả cookie `session` rỗng đã hết hạn.
+          headers:
+            Set-Cookie:
+              description: Cookie phiên đã bị xoá (`Max-Age=0`).
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /auth/me:
+    get:
+      tags: [auth]
+      summary: Lấy thông tin người dùng đang đăng nhập
+      operationId: getCurrentUser
+      responses:
+        '200':
+          description: Thông tin người dùng hiện tại.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    patch:
+      tags: [auth]
+      summary: Cập nhật hồ sơ người dùng hiện tại
+      operationId: updateCurrentUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: Hồ sơ sau khi cập nhật.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+      description: Cookie phiên httpOnly do server cấp khi đăng nhập/đăng ký.
+
+  schemas:
+    ErrorDetail:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Mã lỗi ổn định để frontend so khớp, viết SCREAMING_SNAKE_CASE.
+          example: VALIDATION_ERROR
+        message:
+          type: string
+          description: Thông điệp hiển thị được cho người dùng cuối.
+          example: Dữ liệu không hợp lệ.
+        details:
+          type: object
+          additionalProperties: true
+          description: Lỗi theo từng field, key = tên field trong request body.
+          example:
+            email: Email không đúng định dạng.
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorDetail'
+
+    User:
+      type: object
+      required: [id, email, name, defaultCurrency, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          example: clx8h2k9p0000qw3f8n1a2b3c
+        email:
+          type: string
+          format: email
+          example: hoanglinh@example.com
+        name:
+          type: string
+          description: Tên hiển thị đầy đủ. Form đăng ký nhập họ và tên riêng, frontend ghép lại trước khi gửi.
+          example: Nguyễn Hoàng Linh
+        defaultCurrency:
+          type: string
+          description: Mã tiền tệ mặc định theo ISO 4217.
+          minLength: 3
+          maxLength: 3
+          example: VND
+        createdAt:
+          type: string
+          format: date-time
+          example: '2026-08-15T09:30:00Z'
+        updatedAt:
+          type: string
+          format: date-time
+          example: '2026-08-15T09:30:00Z'
+
+    UserResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/User'
+
+    AuthResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/User'
+
+    RegisterRequest:
+      type: object
+      required: [email, password, name]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          example: hoanglinh@example.com
+        password:
+          type: string
+          format: password
+          minLength: 6
+          maxLength: 72
+          description: Tối thiểu 6 ký tự. Server hash bằng bcrypt/argon2, không bao giờ trả lại trong response.
+          example: matkhau123
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: Nguyễn Hoàng Linh
+        defaultCurrency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          default: VND
+          example: VND
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: hoanglinh@example.com
+        password:
+          type: string
+          format: password
+          example: matkhau123
+
+    UpdateUserRequest:
+      type: object
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        defaultCurrency:
+          type: string
+          minLength: 3
+          maxLength: 3
+
+  responses:
+    BadRequest:
+      description: Dữ liệu gửi lên không hợp lệ.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: VALIDATION_ERROR
+              message: Dữ liệu không hợp lệ.
+              details:
+                password: Mật khẩu phải có ít nhất 6 ký tự.
+
+    Unauthorized:
+      description: Chưa đăng nhập hoặc phiên đã hết hạn.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: UNAUTHORIZED
+              message: Vui lòng đăng nhập để tiếp tục.
+              details: {}
+
+    Forbidden:
+      description: Không có quyền thực hiện thao tác này.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: FORBIDDEN
+              message: Bạn không có quyền thực hiện thao tác này.
+              details: {}
+
+    NotFound:
+      description: Không tìm thấy tài nguyên.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: NOT_FOUND
+              message: Không tìm thấy dữ liệu yêu cầu.
+              details: {}
+
+    InternalError:
+      description: Lỗi không mong đợi phía server.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: INTERNAL_ERROR
+              message: Đã có lỗi xảy ra, vui lòng thử lại sau.
+              details: {}
+
+security:
+  - sessionCookie: []

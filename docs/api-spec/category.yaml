@@ -1,0 +1,498 @@
+openapi: 3.0.3
+
+info:
+  title: Lab Expense Management — Category API
+  version: 1.0.0
+  description: |
+    Danh mục thu/chi. Một model duy nhất, phân biệt phạm vi bằng `scope`:
+
+    - `SYSTEM` — danh mục dựng sẵn, `userId = null`, **mọi user đều thấy nhưng không
+      được sửa/xoá**. Mọi thao tác ghi lên category `SYSTEM` trả `403`.
+    - `USER` — danh mục do người dùng tạo, chỉ chủ sở hữu thấy và sửa được.
+
+    `GET /categories` luôn trả **hợp nhất cả hai phạm vi** để frontend chỉ gọi một
+    lần là dựng xong danh sách chọn.
+
+    Danh mục có thể lồng một cấp (`parentId`). Danh mục cha và con phải cùng `type`.
+
+servers:
+  - url: /api
+    description: Next.js Route Handlers (cùng origin với frontend)
+
+tags:
+  - name: category
+    description: Danh mục thu/chi
+
+paths:
+  /categories:
+    get:
+      tags: [category]
+      summary: Danh sách danh mục (SYSTEM + USER của người đang đăng nhập)
+      operationId: listCategories
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - name: type
+          in: query
+          required: false
+          description: Lọc theo dòng tiền. Bỏ trống = lấy cả INCOME và EXPENSE.
+          schema:
+            $ref: '#/components/schemas/CategoryType'
+        - name: scope
+          in: query
+          required: false
+          description: Lọc theo phạm vi. Bỏ trống = lấy cả SYSTEM và USER.
+          schema:
+            $ref: '#/components/schemas/CategoryScope'
+        - name: parentId
+          in: query
+          required: false
+          description: |
+            Lọc theo danh mục cha. Truyền `null` (chuỗi rỗng) để chỉ lấy danh mục gốc.
+          schema:
+            type: string
+            nullable: true
+        - name: tree
+          in: query
+          required: false
+          description: |
+            `true` thì mỗi phần tử trong `data` chỉ là danh mục gốc và kèm mảng
+            `children`; `false` thì trả phẳng. Khi `tree=true`, `meta.total` đếm
+            theo số danh mục gốc.
+          schema:
+            type: boolean
+            default: false
+        - name: keyword
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 50
+      responses:
+        '200':
+          description: Danh sách danh mục.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      tags: [category]
+      summary: Tạo danh mục của người dùng
+      operationId: createCategory
+      description: Danh mục tạo qua API luôn có `scope = USER`. Không có API tạo danh mục `SYSTEM`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCategoryRequest'
+      responses:
+        '201':
+          description: Danh mục vừa tạo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Không tìm thấy danh mục cha (`parentId`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: PARENT_CATEGORY_NOT_FOUND
+                  message: Không tìm thấy danh mục cha.
+                  details: {}
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /categories/{categoryId}:
+    parameters:
+      - $ref: '#/components/parameters/CategoryIdParam'
+
+    get:
+      tags: [category]
+      summary: Chi tiết một danh mục
+      operationId: getCategoryById
+      responses:
+        '200':
+          description: Chi tiết danh mục.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    patch:
+      tags: [category]
+      summary: Cập nhật danh mục của người dùng
+      operationId: updateCategory
+      description: |
+        Không cho đổi `type` khi danh mục đã có giao dịch (trả `409`) — đổi type sẽ
+        làm báo cáo thu/chi sai ngược. Danh mục `SYSTEM` luôn trả `403`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCategoryRequest'
+      responses:
+        '200':
+          description: Danh mục sau khi cập nhật.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      tags: [category]
+      summary: Xoá mềm danh mục của người dùng
+      operationId: deleteCategory
+      description: |
+        Đặt `isDeleted = true`. Trả `409` nếu danh mục còn giao dịch chưa xoá hoặc
+        còn danh mục con chưa xoá. Danh mục `SYSTEM` luôn trả `403`.
+      responses:
+        '204':
+          description: Đã xoá.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Không được xoá danh mục hệ thống hoặc danh mục của người khác.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: SYSTEM_CATEGORY_READONLY
+                  message: Không thể sửa hoặc xoá danh mục hệ thống.
+                  details: {}
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Danh mục còn giao dịch hoặc còn danh mục con.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: CATEGORY_IN_USE
+                  message: Không thể xoá danh mục đang có giao dịch.
+                  details:
+                    transactionCount: 24
+                    childCount: 0
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+
+    PageSizeParam:
+      name: pageSize
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 50
+
+    CategoryIdParam:
+      name: categoryId
+      in: path
+      required: true
+      schema:
+        type: string
+      example: clx8h2k9p0002qw3f8n1a2b3c
+
+  schemas:
+    ErrorDetail:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          example: VALIDATION_ERROR
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorDetail'
+
+    PaginationMeta:
+      type: object
+      required: [page, pageSize, total]
+      properties:
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 50
+        total:
+          type: integer
+          example: 32
+
+    CategoryType:
+      type: string
+      description: Khớp enum `CategoryType` trong `prisma/schema.prisma`.
+      enum: [INCOME, EXPENSE]
+
+    CategoryScope:
+      type: string
+      description: Khớp enum `CategoryScope` trong `prisma/schema.prisma`.
+      enum: [SYSTEM, USER]
+
+    Category:
+      type: object
+      required: [id, name, type, scope, parentId, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          example: clx8h2k9p0002qw3f8n1a2b3c
+        name:
+          type: string
+          example: Ăn uống
+        type:
+          $ref: '#/components/schemas/CategoryType'
+        scope:
+          $ref: '#/components/schemas/CategoryScope'
+        parentId:
+          type: string
+          nullable: true
+          description: '`null` nghĩa là danh mục gốc.'
+        icon:
+          type: string
+          nullable: true
+          description: Emoji do người dùng chọn.
+          example: 🍜
+        color:
+          type: string
+          nullable: true
+          description: Mã màu hex, tối đa 9 ký tự (`#RRGGBBAA`).
+          pattern: '^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$'
+          example: '#e11d48'
+        usageCount:
+          type: integer
+          description: Số giao dịch chưa xoá đang dùng danh mục này. Dùng để xếp nhóm "Most used".
+          example: 24
+        children:
+          type: array
+          description: Chỉ xuất hiện khi gọi với `tree=true`.
+          items:
+            $ref: '#/components/schemas/Category'
+        createdAt:
+          type: string
+          format: date-time
+          example: '2026-08-15T09:30:00Z'
+        updatedAt:
+          type: string
+          format: date-time
+          example: '2026-08-15T09:30:00Z'
+
+    CategoryResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/Category'
+
+    CategoryListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    CreateCategoryRequest:
+      type: object
+      required: [name, type]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          example: Cà phê
+        type:
+          $ref: '#/components/schemas/CategoryType'
+        parentId:
+          type: string
+          nullable: true
+          description: |
+            Danh mục cha phải cùng `type` và bản thân nó phải là danh mục gốc
+            (chỉ cho lồng một cấp). Danh mục cha có thể là `SYSTEM`.
+        icon:
+          type: string
+          nullable: true
+          maxLength: 32
+        color:
+          type: string
+          nullable: true
+          maxLength: 9
+
+    UpdateCategoryRequest:
+      type: object
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        type:
+          $ref: '#/components/schemas/CategoryType'
+        parentId:
+          type: string
+          nullable: true
+        icon:
+          type: string
+          nullable: true
+          maxLength: 32
+        color:
+          type: string
+          nullable: true
+          maxLength: 9
+
+  responses:
+    BadRequest:
+      description: Dữ liệu gửi lên không hợp lệ (gồm cả lồng quá một cấp hoặc cha khác `type`).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: VALIDATION_ERROR
+              message: Dữ liệu không hợp lệ.
+              details:
+                parentId: Danh mục cha phải cùng loại thu/chi.
+
+    Unauthorized:
+      description: Chưa đăng nhập hoặc phiên đã hết hạn.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: UNAUTHORIZED
+              message: Vui lòng đăng nhập để tiếp tục.
+              details: {}
+
+    Forbidden:
+      description: Danh mục hệ thống (chỉ đọc) hoặc danh mục của người dùng khác.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: SYSTEM_CATEGORY_READONLY
+              message: Không thể sửa hoặc xoá danh mục hệ thống.
+              details: {}
+
+    NotFound:
+      description: Không tìm thấy danh mục.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: CATEGORY_NOT_FOUND
+              message: Không tìm thấy danh mục.
+              details: {}
+
+    Conflict:
+      description: Trùng tên danh mục trong cùng người dùng và cùng `type`.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: CATEGORY_NAME_DUPLICATED
+              message: Bạn đã có danh mục cùng tên trong nhóm này.
+              details:
+                name: Cà phê
+
+    InternalError:
+      description: Lỗi không mong đợi phía server.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: INTERNAL_ERROR
+              message: Đã có lỗi xảy ra, vui lòng thử lại sau.
+              details: {}
+
+security:
+  - sessionCookie: []

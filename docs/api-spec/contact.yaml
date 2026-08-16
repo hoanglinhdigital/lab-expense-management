@@ -1,0 +1,440 @@
+openapi: 3.0.3
+
+info:
+  title: Lab Expense Management — Contact API
+  version: 1.0.0
+  description: |
+    Danh bạ đối tượng vay / cho mượn. Mỗi contact thuộc về đúng một user; mọi
+    endpoint đều lọc theo `userId` lấy từ session — không có endpoint nào nhận
+    `userId` từ client.
+
+    Contact chỉ được dùng bởi giao dịch `BORROW` (mình đi mượn) và `LEND`
+    (mình cho mượn) trong `transaction.yaml`.
+
+servers:
+  - url: /api
+    description: Next.js Route Handlers (cùng origin với frontend)
+
+tags:
+  - name: contact
+    description: Đối tượng vay / cho mượn
+
+paths:
+  /contacts:
+    get:
+      tags: [contact]
+      summary: Danh sách đối tượng của người dùng hiện tại
+      operationId: listContacts
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - name: keyword
+          in: query
+          required: false
+          description: Tìm gần đúng theo tên, số điện thoại hoặc email.
+          schema:
+            type: string
+            maxLength: 50
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [name_asc, name_desc, created_desc, created_asc]
+            default: name_asc
+      responses:
+        '200':
+          description: Danh sách đối tượng.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContactListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      tags: [contact]
+      summary: Tạo đối tượng mới
+      operationId: createContact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateContactRequest'
+      responses:
+        '201':
+          description: Đối tượng vừa tạo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContactResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /contacts/{contactId}:
+    parameters:
+      - $ref: '#/components/parameters/ContactIdParam'
+
+    get:
+      tags: [contact]
+      summary: Chi tiết một đối tượng
+      operationId: getContactById
+      responses:
+        '200':
+          description: Chi tiết đối tượng.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContactResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    patch:
+      tags: [contact]
+      summary: Cập nhật đối tượng
+      operationId: updateContact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateContactRequest'
+      responses:
+        '200':
+          description: Đối tượng sau khi cập nhật.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContactResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      tags: [contact]
+      summary: Xoá mềm đối tượng
+      operationId: deleteContact
+      description: |
+        Đặt `isDeleted = true`. Trả `409` nếu đối tượng còn giao dịch
+        `BORROW`/`LEND` chưa xoá — quan hệ trong Prisma là `onDelete: Restrict`,
+        xoá đi sẽ làm hỏng lịch sử công nợ.
+      responses:
+        '204':
+          description: Đã xoá.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Đối tượng còn giao dịch nên không xoá được.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: CONTACT_HAS_TRANSACTIONS
+                  message: Không thể xoá đối tượng đang có giao dịch.
+                  details:
+                    transactionCount: 3
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+
+    PageSizeParam:
+      name: pageSize
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 50
+
+    ContactIdParam:
+      name: contactId
+      in: path
+      required: true
+      schema:
+        type: string
+      example: clx8h2k9p0004qw3f8n1a2b3c
+
+  schemas:
+    ErrorDetail:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          example: VALIDATION_ERROR
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorDetail'
+
+    PaginationMeta:
+      type: object
+      required: [page, pageSize, total]
+      properties:
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 50
+        total:
+          type: integer
+          description: Tổng số bản ghi khớp bộ lọc, không phải số bản ghi trong trang.
+          example: 12
+
+    DecimalAmount:
+      type: string
+      description: Số tiền dạng chuỗi decimal, tối đa 2 chữ số thập phân.
+      pattern: '^-?\d{1,16}(\.\d{1,2})?$'
+      example: '150000.00'
+
+    Contact:
+      type: object
+      required: [id, name, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          example: clx8h2k9p0004qw3f8n1a2b3c
+        name:
+          type: string
+          example: Anh Minh
+        phone:
+          type: string
+          nullable: true
+          example: '0901234567'
+        email:
+          type: string
+          format: email
+          nullable: true
+          example: minh@example.com
+        note:
+          type: string
+          nullable: true
+        totalLend:
+          allOf:
+            - $ref: '#/components/schemas/DecimalAmount'
+          description: |
+            Tổng tiền đã cho đối tượng này mượn, quy về `defaultCurrency` của user.
+            Chỉ xuất hiện khi gọi với `includeTotals=true` hoặc ở endpoint chi tiết.
+        totalBorrow:
+          allOf:
+            - $ref: '#/components/schemas/DecimalAmount'
+          description: Tổng tiền đang mượn của đối tượng này, quy về `defaultCurrency` của user.
+        transactionCount:
+          type: integer
+          description: Số giao dịch BORROW/LEND chưa xoá gắn với đối tượng này.
+          example: 3
+        createdAt:
+          type: string
+          format: date-time
+          example: '2026-08-15T09:30:00Z'
+        updatedAt:
+          type: string
+          format: date-time
+          example: '2026-08-15T09:30:00Z'
+
+    ContactResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/Contact'
+
+    ContactListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Contact'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    CreateContactRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          example: Anh Minh
+        phone:
+          type: string
+          nullable: true
+          maxLength: 20
+        email:
+          type: string
+          format: email
+          nullable: true
+          maxLength: 255
+        note:
+          type: string
+          nullable: true
+          maxLength: 500
+
+    UpdateContactRequest:
+      type: object
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        phone:
+          type: string
+          nullable: true
+          maxLength: 20
+        email:
+          type: string
+          format: email
+          nullable: true
+          maxLength: 255
+        note:
+          type: string
+          nullable: true
+          maxLength: 500
+
+  responses:
+    BadRequest:
+      description: Dữ liệu gửi lên không hợp lệ.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: VALIDATION_ERROR
+              message: Dữ liệu không hợp lệ.
+              details:
+                name: Tên đối tượng không được để trống.
+
+    Unauthorized:
+      description: Chưa đăng nhập hoặc phiên đã hết hạn.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: UNAUTHORIZED
+              message: Vui lòng đăng nhập để tiếp tục.
+              details: {}
+
+    Forbidden:
+      description: Đối tượng thuộc về người dùng khác.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: FORBIDDEN
+              message: Bạn không có quyền thao tác trên đối tượng này.
+              details: {}
+
+    NotFound:
+      description: Không tìm thấy đối tượng.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: CONTACT_NOT_FOUND
+              message: Không tìm thấy đối tượng.
+              details: {}
+
+    Conflict:
+      description: Trùng tên đối tượng trong cùng một người dùng.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: CONTACT_NAME_DUPLICATED
+              message: Bạn đã có đối tượng cùng tên.
+              details:
+                name: Anh Minh
+
+    InternalError:
+      description: Lỗi không mong đợi phía server.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: INTERNAL_ERROR
+              message: Đã có lỗi xảy ra, vui lòng thử lại sau.
+              details: {}
+
+security:
+  - sessionCookie: []

@@ -1,0 +1,595 @@
+openapi: 3.0.3
+
+info:
+  title: Lab Expense Management — Transaction API
+  version: 1.0.0
+  description: |
+    CRUD giao dịch. Một model duy nhất phủ 5 loại nghiệp vụ, phân biệt bằng `type`.
+    Ràng buộc field theo từng loại (server bắt buộc kiểm, trả `400` nếu sai):
+
+    | type       | fromAccountId | toAccountId | categoryId | contactId | Ảnh hưởng số dư |
+    |------------|---------------|-------------|------------|-----------|-----------------|
+    | `INCOME`   | bắt buộc      | phải null   | bắt buộc (`type=INCOME`)  | phải null | `from` **tăng** |
+    | `EXPENSE`  | bắt buộc      | phải null   | bắt buộc (`type=EXPENSE`) | phải null | `from` **giảm** |
+    | `TRANSFER` | bắt buộc      | bắt buộc, khác `from` | phải null | phải null | `from` giảm, `to` tăng |
+    | `BORROW`   | bắt buộc      | phải null   | phải null  | bắt buộc  | `from` **tăng** |
+    | `LEND`     | bắt buộc      | phải null   | phải null  | bắt buộc  | `from` **giảm** |
+
+    Mọi id tham chiếu (`fromAccountId`, `toAccountId`, `categoryId`, `contactId`) phải
+    thuộc về user đang đăng nhập — trừ category `SYSTEM` dùng chung. Sai chủ sở hữu
+    trả `403`, không tồn tại trả `404`.
+
+servers:
+  - url: /api
+    description: Next.js Route Handlers (cùng origin với frontend)
+
+tags:
+  - name: transaction
+    description: Giao dịch thu, chi, chuyển khoản, vay, cho mượn
+
+paths:
+  /transactions:
+    get:
+      tags: [transaction]
+      summary: Danh sách giao dịch, có phân trang và bộ lọc
+      operationId: listTransactions
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - name: dateFrom
+          in: query
+          required: false
+          description: Lấy giao dịch có `date >= dateFrom` (ISO 8601 UTC, bao gồm mốc).
+          schema:
+            type: string
+            format: date-time
+            example: '2026-08-01T00:00:00Z'
+        - name: dateTo
+          in: query
+          required: false
+          description: Lấy giao dịch có `date <= dateTo` (ISO 8601 UTC, bao gồm mốc).
+          schema:
+            type: string
+            format: date-time
+            example: '2026-08-31T23:59:59Z'
+        - name: accountId
+          in: query
+          required: false
+          description: Khớp khi account là `fromAccountId` **hoặc** `toAccountId`.
+          schema:
+            type: string
+        - name: categoryId
+          in: query
+          required: false
+          description: Lọc theo danh mục. Kèm `includeChildCategories=true` để gộp cả danh mục con.
+          schema:
+            type: string
+        - name: includeChildCategories
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - name: type
+          in: query
+          required: false
+          description: Lọc theo loại giao dịch. Truyền tham số nhiều lần để lọc nhiều loại.
+          schema:
+            $ref: '#/components/schemas/TransactionType'
+        - name: contactId
+          in: query
+          required: false
+          description: Lọc giao dịch BORROW/LEND theo đối tượng.
+          schema:
+            type: string
+        - name: keyword
+          in: query
+          required: false
+          description: Tìm gần đúng trong `note`.
+          schema:
+            type: string
+            maxLength: 200
+        - name: minAmount
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/DecimalAmount'
+        - name: maxAmount
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/DecimalAmount'
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [date_desc, date_asc, amount_desc, amount_asc, created_desc]
+            default: date_desc
+      responses:
+        '200':
+          description: |
+            Danh sách giao dịch. `meta` ngoài phân trang còn kèm tổng thu/chi của
+            **toàn bộ** kết quả khớp bộ lọc (không chỉ trang hiện tại) để màn History
+            hiển thị dòng tổng mà không phải gọi thêm API.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      tags: [transaction]
+      summary: Tạo giao dịch mới
+      operationId: createTransaction
+      description: |
+        Ghi giao dịch và cập nhật số dư trong cùng một `$transaction` của Prisma.
+        Với `TRANSFER` giữa hai nguồn tiền khác tiền tệ, gửi thêm `receiveAmount` —
+        số tiền thực nhận ở `toAccount`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTransactionRequest'
+      responses:
+        '201':
+          description: Giao dịch vừa tạo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /transactions/{transactionId}:
+    parameters:
+      - $ref: '#/components/parameters/TransactionIdParam'
+
+    get:
+      tags: [transaction]
+      summary: Chi tiết một giao dịch
+      operationId: getTransactionById
+      responses:
+        '200':
+          description: Chi tiết giao dịch, kèm object account/category/contact đã join sẵn.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    patch:
+      tags: [transaction]
+      summary: Cập nhật giao dịch
+      operationId: updateTransaction
+      description: |
+        Cho phép đổi cả `type`. Khi đổi `type`, request phải gửi kèm đủ bộ field hợp lệ
+        của type mới — server kiểm lại toàn bộ ràng buộc trong bảng ở phần mô tả và
+        tính lại số dư của mọi account bị ảnh hưởng (cũ lẫn mới).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTransactionRequest'
+      responses:
+        '200':
+          description: Giao dịch sau khi cập nhật.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      tags: [transaction]
+      summary: Xoá mềm giao dịch
+      operationId: deleteTransaction
+      description: Đặt `isDeleted = true`; số dư các account liên quan được tính lại ngay.
+      responses:
+        '204':
+          description: Đã xoá.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+
+    PageSizeParam:
+      name: pageSize
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+    TransactionIdParam:
+      name: transactionId
+      in: path
+      required: true
+      schema:
+        type: string
+      example: clx8h2k9p0003qw3f8n1a2b3c
+
+  schemas:
+    ErrorDetail:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          example: VALIDATION_ERROR
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorDetail'
+
+    DecimalAmount:
+      type: string
+      description: Số tiền dạng chuỗi decimal, tối đa 2 chữ số thập phân.
+      pattern: '^-?\d{1,16}(\.\d{1,2})?$'
+      example: '150000.00'
+
+    PositiveAmount:
+      type: string
+      description: Số tiền dương, tối đa 2 chữ số thập phân. Hướng tiền do `type` quyết định, không dùng số âm.
+      pattern: '^\d{1,16}(\.\d{1,2})?$'
+      example: '150000.00'
+
+    TransactionType:
+      type: string
+      description: Khớp enum `TransactionType` trong `prisma/schema.prisma`.
+      enum: [INCOME, EXPENSE, TRANSFER, BORROW, LEND]
+
+    AccountRef:
+      type: object
+      description: Thông tin rút gọn của nguồn tiền, join sẵn để danh sách không phải gọi thêm API.
+      required: [id, name, currency]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          example: Ví tiền mặt
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          example: VND
+        icon:
+          type: string
+          nullable: true
+
+    CategoryRef:
+      type: object
+      required: [id, name, type]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          example: Ăn uống
+        type:
+          type: string
+          enum: [INCOME, EXPENSE]
+        icon:
+          type: string
+          nullable: true
+        color:
+          type: string
+          nullable: true
+        parentId:
+          type: string
+          nullable: true
+
+    ContactRef:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          example: Anh Minh
+
+    Transaction:
+      type: object
+      required: [id, type, amount, currency, date, fromAccount, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          example: clx8h2k9p0003qw3f8n1a2b3c
+        type:
+          $ref: '#/components/schemas/TransactionType'
+        amount:
+          allOf:
+            - $ref: '#/components/schemas/PositiveAmount'
+          description: Số tiền trừ/cộng ở `fromAccount`, tính theo tiền tệ của `fromAccount`.
+        receiveAmount:
+          allOf:
+            - $ref: '#/components/schemas/PositiveAmount'
+          nullable: true
+          description: Chỉ có với TRANSFER khác tiền tệ — số tiền cộng vào `toAccount`.
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          description: Tiền tệ của `fromAccount` tại thời điểm trả về.
+          example: VND
+        date:
+          type: string
+          format: date-time
+          description: Thời điểm phát sinh giao dịch (ISO 8601 UTC). Frontend tự đổi sang giờ địa phương.
+          example: '2026-08-15T09:30:00Z'
+        note:
+          type: string
+          nullable: true
+          example: Ăn trưa với đồng nghiệp
+        fromAccount:
+          $ref: '#/components/schemas/AccountRef'
+        toAccount:
+          allOf:
+            - $ref: '#/components/schemas/AccountRef'
+          nullable: true
+        category:
+          allOf:
+            - $ref: '#/components/schemas/CategoryRef'
+          nullable: true
+        contact:
+          allOf:
+            - $ref: '#/components/schemas/ContactRef'
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          example: '2026-08-15T09:31:00Z'
+        updatedAt:
+          type: string
+          format: date-time
+          example: '2026-08-15T09:31:00Z'
+
+    TransactionResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/Transaction'
+
+    TransactionListMeta:
+      allOf:
+        - type: object
+          required: [page, pageSize, total]
+          properties:
+            page:
+              type: integer
+              example: 1
+            pageSize:
+              type: integer
+              example: 20
+            total:
+              type: integer
+              description: Tổng số giao dịch khớp bộ lọc.
+              example: 137
+        - type: object
+          required: [totalIncome, totalExpense, currency]
+          properties:
+            totalIncome:
+              allOf:
+                - $ref: '#/components/schemas/DecimalAmount'
+              description: Tổng tiền vào của toàn bộ kết quả khớp bộ lọc.
+            totalExpense:
+              allOf:
+                - $ref: '#/components/schemas/DecimalAmount'
+              description: Tổng tiền ra của toàn bộ kết quả khớp bộ lọc.
+            currency:
+              type: string
+              minLength: 3
+              maxLength: 3
+              description: Tiền tệ của hai tổng trên (mặc định `defaultCurrency` của user).
+              example: VND
+
+    TransactionListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Transaction'
+        meta:
+          $ref: '#/components/schemas/TransactionListMeta'
+
+    CreateTransactionRequest:
+      type: object
+      required: [type, amount, date, fromAccountId]
+      properties:
+        type:
+          $ref: '#/components/schemas/TransactionType'
+        amount:
+          $ref: '#/components/schemas/PositiveAmount'
+        receiveAmount:
+          allOf:
+            - $ref: '#/components/schemas/PositiveAmount'
+          nullable: true
+          description: Bắt buộc với TRANSFER khi hai account khác tiền tệ; bỏ qua với các type khác.
+        date:
+          type: string
+          format: date-time
+          example: '2026-08-15T09:30:00Z'
+        note:
+          type: string
+          nullable: true
+          maxLength: 500
+        fromAccountId:
+          type: string
+        toAccountId:
+          type: string
+          nullable: true
+        categoryId:
+          type: string
+          nullable: true
+        contactId:
+          type: string
+          nullable: true
+
+    UpdateTransactionRequest:
+      allOf:
+        - $ref: '#/components/schemas/CreateTransactionRequest'
+      description: |
+        Cùng shape với request tạo mới — sửa giao dịch là gửi lại toàn bộ trạng thái
+        mong muốn, tránh trường hợp `PATCH` một phần làm bộ field không còn hợp lệ
+        với `type` hiện tại.
+
+  responses:
+    BadRequest:
+      description: |
+        Dữ liệu không hợp lệ: sai ràng buộc field theo `type`, số tiền ≤ 0,
+        `toAccountId` trùng `fromAccountId`, hoặc `categoryId` khác `type` giao dịch.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: VALIDATION_ERROR
+              message: Dữ liệu không hợp lệ.
+              details:
+                categoryId: Giao dịch chi tiêu phải chọn danh mục loại EXPENSE.
+
+    Unauthorized:
+      description: Chưa đăng nhập hoặc phiên đã hết hạn.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: UNAUTHORIZED
+              message: Vui lòng đăng nhập để tiếp tục.
+              details: {}
+
+    Forbidden:
+      description: Giao dịch hoặc một trong các tài nguyên tham chiếu thuộc người dùng khác.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: FORBIDDEN
+              message: Bạn không có quyền thao tác trên giao dịch này.
+              details: {}
+
+    NotFound:
+      description: Không tìm thấy giao dịch hoặc tài nguyên tham chiếu (account/category/contact).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: TRANSACTION_NOT_FOUND
+              message: Không tìm thấy giao dịch.
+              details: {}
+
+    Conflict:
+      description: |
+        Giao dịch bị sửa/xoá bởi một phiên khác trong lúc thao tác, hoặc nguồn tiền
+        tham chiếu đã bị xoá mềm.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: ACCOUNT_DELETED
+              message: Nguồn tiền đã bị xoá, vui lòng chọn nguồn tiền khác.
+              details:
+                fromAccountId: clx8h2k9p0001qw3f8n1a2b3c
+
+    InternalError:
+      description: Lỗi không mong đợi phía server.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: INTERNAL_ERROR
+              message: Đã có lỗi xảy ra, vui lòng thử lại sau.
+              details: {}
+
+security:
+  - sessionCookie: []

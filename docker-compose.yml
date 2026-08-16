@@ -1,0 +1,17 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: expense-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: expense_root_pass
+      MYSQL_DATABASE: expense_db
+      MYSQL_USER: expense_user
+      MYSQL_PASSWORD: expense_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - expense-mysql-data:/var/lib/mysql
+
+volumes:
+  expense-mysql-data:
