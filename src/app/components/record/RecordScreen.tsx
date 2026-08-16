@@ -48,8 +48,6 @@ type Overlay =
   | { kind: "contact" }
   | { kind: "contact-create" };
 
-const COMING_SOON = "Tính năng đang phát triển, vui lòng quay lại sau.";
-
 function createInitialForm(): RecordFormState {
   const now = new Date();
   return {
@@ -385,7 +383,7 @@ export default function RecordScreen() {
       <RecordHeader
         type={form.type}
         onTypeChange={handleTypeChange}
-        onHistory={() => setNotice(COMING_SOON)}
+        onHistory={() => router.push("/history")}
       />
 
       <form

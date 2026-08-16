@@ -54,7 +54,7 @@ interface TransactionDto {
   id: string;
 }
 
-function toAccountOption(dto: AccountDto): AccountOption {
+export function toAccountOption(dto: AccountDto): AccountOption {
   return {
     id: dto.id,
     name: dto.name,
@@ -64,7 +64,7 @@ function toAccountOption(dto: AccountDto): AccountOption {
   };
 }
 
-function toCategoryOption(dto: CategoryDto): CategoryOption {
+export function toCategoryOption(dto: CategoryDto): CategoryOption {
   return {
     id: dto.id,
     name: dto.name,
@@ -75,7 +75,7 @@ function toCategoryOption(dto: CategoryDto): CategoryOption {
   };
 }
 
-function toContactOption(dto: ContactDto): ContactOption {
+export function toContactOption(dto: ContactDto): ContactOption {
   return { id: dto.id, name: dto.name };
 }
 

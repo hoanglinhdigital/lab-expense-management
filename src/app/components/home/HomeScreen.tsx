@@ -94,7 +94,7 @@ export default function HomeScreen() {
         <FlowSummaryCard
           flow={overview.flow}
           expenseByCategory={overview.expenseByCategory}
-          onHistory={() => setNotice(COMING_SOON)}
+          onHistory={() => router.push("/history")}
         />
 
         <ExchangeRateCard
