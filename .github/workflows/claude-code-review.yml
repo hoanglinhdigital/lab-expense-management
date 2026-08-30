@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: read
+      pull-requests: write
       issues: read
       id-token: write
 
@@ -34,6 +34,8 @@ jobs:
       - name: Run Claude Code Review
         id: claude-review
         uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
@@ -64,5 +66,6 @@ jobs:
 
             Cuối cùng, dùng lệnh gh pr comment để đăng toàn bộ nhận xét lên pull request.
           claude_args: |
+            --model claude-sonnet-5
             --allowed-tools "Read,Grep,Glob,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*)"
 
