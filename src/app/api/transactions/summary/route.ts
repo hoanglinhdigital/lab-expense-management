@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+// Test push again to trigger Github action.
 export async function GET(req: NextRequest) {
   const userId = req.nextUrl.searchParams.get('userId');
   const month = req.nextUrl.searchParams.get('month');
