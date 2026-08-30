@@ -66,5 +66,6 @@ jobs:
 
             Cuối cùng, dùng lệnh gh pr comment để đăng toàn bộ nhận xét lên pull request.
           claude_args: |
+            --model claude-sonnet-5
             --allowed-tools "Read,Grep,Glob,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*)"
 
