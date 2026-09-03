@@ -7,8 +7,9 @@ import {
   PrismaClient,
   TransactionType,
 } from "../src/generated/prisma/client";
+import { resolveDatabaseUrl } from "../src/lib/db-connection";
 
-const adapter = new PrismaMariaDb(process.env.DATABASE_URL!);
+const adapter = new PrismaMariaDb(resolveDatabaseUrl());
 const prisma = new PrismaClient({ adapter });
 
 /// bcrypt hash của mật khẩu "password123" — chỉ dùng cho dữ liệu mẫu môi trường dev.
