@@ -38,6 +38,7 @@ Lấy đúng theo `package.json` hiện tại của project — không tự ý n
 - **Tailwind CSS**: `^4`
 - **Prisma**: `^7.9.1` (`@prisma/client` + `@prisma/adapter-mariadb`)
 
+
 ## 4. Kiến trúc App Router
 
 - Toàn bộ source code nằm trong `/src`, không dùng Pages Router (`pages/`).
@@ -54,7 +55,7 @@ Lấy đúng theo `package.json` hiện tại của project — không tự ý n
 - Plan infra: `/plans/infra/<ten_task>.md`
 
 ## 6. Nguyên tắc thiết kế database (Prisma)
-
+- DB Engine: MySQL 8.x
 - Mọi thay đổi schema phải đi qua migration (`prisma migrate dev`) — **không sửa tay trực tiếp trên database**.
 - Tên model: **PascalCase, số ít** (vd: `Expense`, `Category`, không phải `expenses`).
 - Tên field: **camelCase** (vd: `createdAt`, `categoryId`).
