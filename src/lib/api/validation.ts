@@ -72,19 +72,30 @@ export const currencyCodeSchema = z
     message: "Mã tiền tệ phải gồm đúng 3 chữ cái.",
   });
 
-/** Mốc thời gian ISO 8601. */
+/**
+ * Mốc thời gian ISO 8601. Chỉ chấp nhận đúng chuẩn ISO 8601 — `date` (YYYY-MM-DD)
+ * hoặc `date-time` (có `Z`/offset). `Date.parse` cũ nhận cả `"06-09-2026"` nên
+ * diễn giải sai ngày người dùng; ràng buộc chặt để trả 400 thay vì lưu sai.
+ */
 export const isoDateSchema = z
   .string()
   .trim()
-  .refine((value) => !Number.isNaN(Date.parse(value)), {
-    message: "Thời điểm phải theo định dạng ISO 8601.",
-  })
+  .refine(
+    (value) =>
+      z.iso.datetime({ offset: true }).safeParse(value).success ||
+      z.iso.date().safeParse(value).success,
+    { message: "Thời điểm phải theo định dạng ISO 8601." },
+  )
   .transform((value) => new Date(value));
 
-/** Số tiền dương, tối đa 2 chữ số thập phân — khớp `PositiveAmount` của spec. */
+/**
+ * Số tiền dương, tối đa 2 chữ số thập phân — khớp `PositiveAmount` của spec.
+ * Chỉ nhận **chuỗi** decimal: số JSON có thể mất chính xác qua float và lệch
+ * hợp đồng API.
+ */
 export const positiveAmountSchema = z
-  .union([z.string(), z.number()])
-  .transform((value) => String(value).trim())
+  .string()
+  .transform((value) => value.trim())
   .refine((value) => /^\d{1,16}(\.\d{1,2})?$/.test(value), {
     message: "Số tiền phải là số dương, tối đa 2 chữ số thập phân.",
   })

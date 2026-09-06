@@ -11,7 +11,6 @@ import { TransactionType } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import {
   accountNotFound,
-  categoryNotFound,
   conflict,
   contactNotFound,
   transactionNotFound,
@@ -49,8 +48,9 @@ interface ResolvedInput {
 }
 
 /**
- * Account phải thuộc user. Phân biệt rõ ba trạng thái theo spec:
- * không tồn tại/của người khác → 404, tồn tại nhưng đã xoá mềm → 409.
+ * Account phải thuộc user. Id tham chiếu không tồn tại / của người khác được coi
+ * là dữ liệu đầu vào không hợp lệ → 400 (kèm `error.details.<field>`), gộp cả hai
+ * để không lộ sự tồn tại tài nguyên. Tồn tại nhưng đã xoá mềm → 409.
  */
 async function resolveAccount(userId: string, accountId: string, field: string) {
   const account = await prisma.account.findFirst({
@@ -58,7 +58,9 @@ async function resolveAccount(userId: string, accountId: string, field: string) 
     select: { id: true, currency: true, isDeleted: true },
   });
 
-  if (!account) throw accountNotFound();
+  if (!account) {
+    throw validationError({ [field]: "Nguồn tiền không hợp lệ hoặc không tồn tại." });
+  }
   if (account.isDeleted) {
     throw conflict(
       "ACCOUNT_DELETED",
@@ -84,7 +86,11 @@ async function resolveCategory(
     select: { id: true, type: true, isDeleted: true },
   });
 
-  if (!category) throw categoryNotFound();
+  if (!category) {
+    throw validationError({
+      categoryId: "Danh mục không hợp lệ hoặc không tồn tại.",
+    });
+  }
   if (category.isDeleted) {
     throw conflict(
       "CATEGORY_DELETED",

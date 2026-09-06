@@ -16,6 +16,7 @@
     "test:category": "k6 run test/category/category.test.js",
     "test:contact": "k6 run test/contact/contact.test.js",
     "test:transaction": "k6 run test/transaction/transaction.test.js",
+    "test:api_transaction_expense": "node test/run-with-env.mjs test/transaction/expense/testscript.js",
     "test:report": "k6 run test/report/report.test.js"
   },
   "dependencies": {

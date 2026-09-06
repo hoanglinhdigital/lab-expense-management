@@ -135,6 +135,9 @@ Nguyên tắc chung:
 
 - [x] `npm run lint` — pass.
 - [x] `npx prisma generate` + `npm run build` — pass; route `/api/cron/cleanup-sessions` build thành function động.
+- [x] `prisma migrate deploy` trên TiDB Cloud Starter (`expense_db`, region `ap-northeast-1`) — cả 3 migration applied sạch, `prisma migrate status` báo up to date.
+- [x] **FK: TiDB tạo được toàn bộ foreign key → KHÔNG cần `relationMode = "prisma"`**, giữ nguyên schema.
+- [x] `prisma db seed` trên TiDB — dữ liệu mẫu ghi thành công (đã kiểm tra qua MySQL Workbench).
 
 ### KHÔNG cần làm (nhờ giữ MySQL)
 
@@ -164,8 +167,8 @@ Nguyên tắc chung:
 1. **Local**: trỏ `DATABASE_URL` sang DB cloud vừa tạo → `npx prisma migrate deploy` → `npm run dev`
    → đăng ký / đăng nhập / tạo đủ 5 loại giao dịch / xem báo cáo & tỷ giá.
 2. **Build production**: `npm run build` pass, không lỗi Prisma engine / adapter / SSL.
-3. **Migrate trên DB thật**: `prisma migrate deploy` chạy sạch (đủ bảng + index đúng tên);
-   với TiDB kiểm tra thêm FK / `relationMode` không gây lỗi.
+3. **Migrate trên DB thật**: ✅ đã chạy — `prisma migrate deploy` sạch trên TiDB, FK tạo đủ,
+   không cần `relationMode`. Seed cũng đã chạy.
 4. **Preview deploy**: mở PR → Vercel Preview URL → smoke test các luồng chính.
 5. **k6 regression**: `API_BASE_URL=<preview-url> npm run test:api` — toàn bộ suite
    auth / account / category / contact / transaction / report pass.
