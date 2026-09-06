@@ -401,11 +401,14 @@ export async function getAccountBalance(
   asOf?: Date,
 ) {
   const account = await getOwnedAccount(userId, accountId);
+  // Không truyền `asOf` → số dư hiện tại thật (mọi giao dịch chưa xoá), kể cả
+  // giao dịch có `date` nhỉnh hơn thời điểm gọi. Chỉ cắt theo mốc khi client
+  // yêu cầu rõ ràng qua query `asOf`.
   const effectiveAsOf = asOf ?? new Date();
 
   const balances = await computeBalances(userId, {
     accountIds: [accountId],
-    asOf: effectiveAsOf,
+    ...(asOf ? { asOf } : {}),
   });
   const balance = balances.get(accountId);
 

@@ -1,0 +1,240 @@
+npm run test:api_transaction_expense
+
+> lab-expense-management@0.1.0 test:api_transaction_expense
+> node test/run-with-env.mjs test/transaction/expense/testscript.js
+
+◇ injected env (6) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: test/transaction/expense/testscript.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 1 max VUs, 10m30s max duration (incl. graceful stop):
+              * default: 1 iterations shared among 1 VUs (maxDuration: 10m0s, gracefulStop: 30s)
+
+INFO[0000] API_BASE_URL = https://claude101expensemanagement.vercel.app/api  source=console
+INFO[0000] ==========================================================================  source=console
+INFO[0002] Bối cảnh: A=testuser-a@gmail.com accA1=cmtpixpli000904l1x17fpq5w accA2=cmtpixpi4000804l1cy23dx6l  source=console
+INFO[0002]           B=testuser-b@gmail.com accB1=cmtpjsebh000304jifqdp44cx  source=console
+INFO[0002]           parentCat=cmtlmxr6g0000ksv7rmlz7ssj childCat=cmtpixp7g000604l16cbbmyl5 incomeCat=cmtlmxrt80009ksv7ttjjfwyk catOfB=cmtpjse2q000204jie7y9kw8l  source=console
+INFO[0002] --------------------------------------------------------------------------  source=console
+INFO[0010] [TC01] FAIL ❌  [Happy] Tạo chi tiêu đầy đủ field, category child  source=console
+INFO[0010]       • expected : HTTP 201; amount=150000; note="Ăn trưa"; số dư 99,845,925.98 → 99,695,925.98  source=console
+INFO[0010]       • actual   : HTTP 201  |  note="Ăn trưa"; số dư → 99,845,925.98  source=console
+INFO[0011] [TC02] PASS ✅  [Happy] Không gửi note, chọn category parent  source=console
+INFO[0011]       • expected : HTTP 201; note=null; số dư 99,857,654.33 → 99,837,654.33  source=console
+INFO[0011]       • actual   : HTTP 201  |  note=null; số dư → 99,837,654.33  source=console
+INFO[0011] [TC03] PASS ✅  [Happy] Gửi note = null tường minh  source=console
+INFO[0011]       • expected : HTTP 201; note = null      source=console
+INFO[0011]       • actual   : HTTP 201  |  note=null     source=console
+INFO[0011] [TC04] PASS ✅  [Edge] spentAt ở tương lai xa (2030) — không bị chặn  source=console
+INFO[0011]       • expected : HTTP 201; data.date = 2030-01-01…  source=console
+INFO[0011]       • actual   : HTTP 201  |  data.date=2030-01-01T00:00:00.000Z  source=console
+INFO[0019] [TC05] FAIL ❌  [Edge] amount = 0.01 (nhỏ nhất > 0)  source=console
+INFO[0019]       • expected : HTTP 201; số dư 99,845,925.98 → 99,845,925.97  source=console
+INFO[0019]       • actual   : HTTP 201  |  số dư → 99,845,925.98  source=console
+INFO[0020] [TC06] PASS ✅  [Edge] spentAt = thời điểm hiện tại  source=console
+INFO[0020]       • expected : HTTP 201                   source=console
+INFO[0020]       • actual   : HTTP 201                   source=console
+INFO[0020] [TC07] PASS ✅  [Edge] note dài đúng 500 ký tự  source=console
+INFO[0020]       • expected : HTTP 201; note.length = 500  source=console
+INFO[0020]       • actual   : HTTP 201  |  note.length=500  source=console
+INFO[0020] [TC08] PASS ✅  [Edge] note 501 ký tự — vượt giới hạn  source=console
+INFO[0020]       • expected : HTTP 400 (note quá dài)    source=console
+INFO[0020]       • actual   : HTTP 400  |  error.code=VALIDATION_ERROR  |  details={"note":"Too big: expected string to have <=500 characters"}  source=console
+INFO[0020] [TC09] PASS ✅  [Edge] amount có 3 chữ số thập phân (100.005)  source=console
+INFO[0020]       • expected : HTTP 400; error.details.amount  source=console
+INFO[0020]       • actual   : HTTP 400  |  error.code=VALIDATION_ERROR  |  details={"amount":"Số tiền phải là số dương, tối đa 2 chữ số thập phân."}  source=console
+INFO[0020] [TC27] PASS ✅  [Edge] amount cực lớn, tràn DECIMAL của DB  source=console
+INFO[0020]       • expected : HTTP 400 (KHÔNG phải 500); số dư không đổi  source=console
+INFO[0020]       • actual   : HTTP 400  |  error.code=VALIDATION_ERROR  |  details={"amount":"Số tiền phải là số dương, tối đa 2 chữ số thập phân."}  |  số dư 99,833,580.31 → 99,833,580.31  source=console
+INFO[0021] [TC10] PASS ✅  [Negative] amount = 0          source=console
+INFO[0021]       • expected : HTTP 400; error.details.amount; số dư không đổi  source=console
+INFO[0021]       • actual   : HTTP 400  |  error.code=VALIDATION_ERROR  |  details={"amount":"Số tiền phải lớn hơn 0."}  |  số dư 99,833,580.31 → 99,833,580.31  source=console
+INFO[0021] [TC11] PASS ✅  [Negative] amount âm (-50000)  source=console
+INFO[0021]       • expected : HTTP 400                   source=console
+INFO[0021]       • actual   : HTTP 400  |  error.code=VALIDATION_ERROR  |  details={"amount":"Số tiền phải là số dương, tối đa 2 chữ số thập phân."}  source=console
+INFO[0021] [TC12] PASS ✅  [Negative] amount = "abc" (sai định dạng)  source=console
+INFO[0021]       • expected : HTTP 400                   source=console
+INFO[0021]       • actual   : HTTP 400  |  error.code=VALIDATION_ERROR  |  details={"amount":"Số tiền phải là số dương, tối đa 2 chữ số thập phân."}  source=console
+INFO[0021] [TC13] FAIL ❌  [Negative] amount là number thay vì chuỗi decimal  source=console
+INFO[0021]       • expected : HTTP 400 (validate kiểu dữ liệu)  source=console
+INFO[0021]       • actual   : HTTP 201                   source=console
+INFO[0021] [TC14] FAIL ❌  [Negative] categoryId không tồn tại  source=console
+INFO[0021]       • expected : HTTP 400 (category không tồn tại)  source=console
+INFO[0021]       • actual   : HTTP 404  |  error.code=CATEGORY_NOT_FOUND  source=console
+INFO[0021] [TC15] PASS ✅  [Negative] thiếu categoryId (bắt buộc với EXPENSE)  source=console
+INFO[0021]       • expected : HTTP 400                   source=console
+INFO[0021]       • actual   : HTTP 400  |  error.code=VALIDATION_ERROR  |  details={"categoryId":"Invalid input: expected string, received undefined"}  source=console
+INFO[0021] [TC16] PASS ✅  [Negative] categoryId là category loại INCOME  source=console
+INFO[0021]       • expected : HTTP 400; error.details.categoryId  source=console
+INFO[0021]       • actual   : HTTP 400  |  error.code=VALIDATION_ERROR  |  details={"categoryId":"Giao dịch chi tiêu phải chọn danh mục loại EXPENSE."}  source=console
+INFO[0021] [TC17] FAIL ❌  [Negative] accountId (fromAccountId) không tồn tại  source=console
+INFO[0021]       • expected : HTTP 400 (account không tồn tại)  source=console
+INFO[0021]       • actual   : HTTP 404  |  error.code=ACCOUNT_NOT_FOUND  source=console
+INFO[0022] [TC18] FAIL ❌  [Negative] fromAccountId là account của user B  source=console
+INFO[0022]       • expected : HTTP 400; số dư account B không đổi  source=console
+INFO[0022]       • actual   : HTTP 404  |  error.code=ACCOUNT_NOT_FOUND  |  số dư B 1,000,000 → 1,000,000  source=console
+INFO[0022] [TC19] PASS ✅  [Negative] thiếu fromAccountId  source=console
+INFO[0022]       • expected : HTTP 400                   source=console
+INFO[0022]       • actual   : HTTP 400  |  error.code=VALIDATION_ERROR  |  details={"fromAccountId":"Invalid input: expected string, received undefined"}  source=console
+INFO[0022] [TC20] PASS ✅  [Negative] thiếu spentAt (date)  source=console
+INFO[0022]       • expected : HTTP 400                   source=console
+INFO[0022]       • actual   : HTTP 400  |  error.code=VALIDATION_ERROR  |  details={"date":"Invalid input: expected string, received undefined"}  source=console
+INFO[0022] [TC21] FAIL ❌  [Negative] date = "06-09-2026" (sai định dạng ISO)  source=console
+INFO[0022]       • expected : HTTP 400 (lỗi định dạng date-time)  source=console
+INFO[0022]       • actual   : HTTP 201  |  data.date=2026-06-09T00:00:00.000Z  source=console
+INFO[0022] [TC22] PASS ✅  [Negative] chưa đăng nhập (không cookie session)  source=console
+INFO[0022]       • expected : HTTP 401                   source=console
+INFO[0022]       • actual   : HTTP 401  |  error.code=UNAUTHORIZED  source=console
+INFO[0022] [TC23] PASS ✅  [Negative] amount=0 + categoryId sai + account của user khác  source=console
+INFO[0022]       • expected : HTTP 400; không đổi số dư account nào  source=console
+INFO[0022]       • actual   : HTTP 400  |  error.code=VALIDATION_ERROR  |  details={"amount":"Số tiền phải lớn hơn 0."}  |  A 99,823,580.31→99,823,580.31; B 1,000,000→1,000,000  source=console
+INFO[0022] [TC24] PASS ✅  [Negative] body rỗng {}        source=console
+INFO[0022]       • expected : HTTP 400 (liệt kê field bắt buộc thiếu)  source=console
+INFO[0022]       • actual   : HTTP 400  |  error.code=VALIDATION_ERROR  |  details={"type":"Invalid discriminator value. Expected 'INCOME' | 'EXPENSE' | 'TRANSFER' | 'BORROW' | 'LEND'"}  source=console
+INFO[0022] [TC25] PASS ✅  [Negative] note là number thay vì chuỗi  source=console
+INFO[0022]       • expected : HTTP 400                   source=console
+INFO[0022]       • actual   : HTTP 400  |  error.code=VALIDATION_ERROR  |  details={"note":"Invalid input: expected string, received number"}  source=console
+INFO[0023] [TC26] FAIL ❌  [Negative] categoryId là category của user B  source=console
+INFO[0023]       • expected : HTTP 400 (với A coi như category không tồn tại)  source=console
+INFO[0023]       • actual   : HTTP 404  |  error.code=CATEGORY_NOT_FOUND  source=console
+INFO[0023] ==========================================================================  source=console
+INFO[0023]   TỔNG KẾT — 19/27 PASS, 8 FAIL               source=console
+INFO[0023] ==========================================================================  source=console
+INFO[0023]   ❌  TC01  [Happy] Tạo chi tiêu đầy đủ field, category child  source=console
+INFO[0023]   ✅  TC02  [Happy] Không gửi note, chọn category parent  source=console
+INFO[0023]   ✅  TC03  [Happy] Gửi note = null tường minh  source=console
+INFO[0023]   ✅  TC04  [Edge] spentAt ở tương lai xa (2030) — không bị chặn  source=console
+INFO[0023]   ❌  TC05  [Edge] amount = 0.01 (nhỏ nhất > 0)  source=console
+INFO[0023]   ✅  TC06  [Edge] spentAt = thời điểm hiện tại  source=console
+INFO[0023]   ✅  TC07  [Edge] note dài đúng 500 ký tự     source=console
+INFO[0023]   ✅  TC08  [Edge] note 501 ký tự — vượt giới hạn  source=console
+INFO[0023]   ✅  TC09  [Edge] amount có 3 chữ số thập phân (100.005)  source=console
+INFO[0023]   ✅  TC27  [Edge] amount cực lớn, tràn DECIMAL của DB  source=console
+INFO[0023]   ✅  TC10  [Negative] amount = 0              source=console
+INFO[0023]   ✅  TC11  [Negative] amount âm (-50000)      source=console
+INFO[0023]   ✅  TC12  [Negative] amount = "abc" (sai định dạng)  source=console
+INFO[0023]   ❌  TC13  [Negative] amount là number thay vì chuỗi decimal  source=console
+INFO[0023]   ❌  TC14  [Negative] categoryId không tồn tại  source=console
+INFO[0023]   ✅  TC15  [Negative] thiếu categoryId (bắt buộc với EXPENSE)  source=console
+INFO[0023]   ✅  TC16  [Negative] categoryId là category loại INCOME  source=console
+INFO[0023]   ❌  TC17  [Negative] accountId (fromAccountId) không tồn tại  source=console
+INFO[0023]   ❌  TC18  [Negative] fromAccountId là account của user B  source=console
+INFO[0023]   ✅  TC19  [Negative] thiếu fromAccountId     source=console
+INFO[0023]   ✅  TC20  [Negative] thiếu spentAt (date)    source=console
+INFO[0023]   ❌  TC21  [Negative] date = "06-09-2026" (sai định dạng ISO)  source=console
+INFO[0023]   ✅  TC22  [Negative] chưa đăng nhập (không cookie session)  source=console
+INFO[0023]   ✅  TC23  [Negative] amount=0 + categoryId sai + account của user khác  source=console
+INFO[0023]   ✅  TC24  [Negative] body rỗng {}            source=console
+INFO[0023]   ✅  TC25  [Negative] note là number thay vì chuỗi  source=console
+INFO[0023]   ❌  TC26  [Negative] categoryId là category của user B  source=console
+INFO[0023] ==========================================================================  source=console
+INFO[0023]   CHI TIẾT 8 CASE FAIL:                       source=console
+INFO[0023]   ❌ TC01  [Happy] Tạo chi tiêu đầy đủ field, category child  source=console
+INFO[0023]        expected : HTTP 201; amount=150000; note="Ăn trưa"; số dư 99,845,925.98 → 99,695,925.98  source=console
+INFO[0023]        actual   : HTTP 201  |  note="Ăn trưa"; số dư → 99,845,925.98  source=console
+INFO[0023]   ❌ TC05  [Edge] amount = 0.01 (nhỏ nhất > 0)  source=console
+INFO[0023]        expected : HTTP 201; số dư 99,845,925.98 → 99,845,925.97  source=console
+INFO[0023]        actual   : HTTP 201  |  số dư → 99,845,925.98  source=console
+INFO[0023]   ❌ TC13  [Negative] amount là number thay vì chuỗi decimal  source=console
+INFO[0023]        expected : HTTP 400 (validate kiểu dữ liệu)  source=console
+INFO[0023]        actual   : HTTP 201                    source=console
+INFO[0023]   ❌ TC14  [Negative] categoryId không tồn tại  source=console
+INFO[0023]        expected : HTTP 400 (category không tồn tại)  source=console
+INFO[0023]        actual   : HTTP 404  |  error.code=CATEGORY_NOT_FOUND  source=console
+INFO[0023]   ❌ TC17  [Negative] accountId (fromAccountId) không tồn tại  source=console
+INFO[0023]        expected : HTTP 400 (account không tồn tại)  source=console
+INFO[0023]        actual   : HTTP 404  |  error.code=ACCOUNT_NOT_FOUND  source=console
+INFO[0023]   ❌ TC18  [Negative] fromAccountId là account của user B  source=console
+INFO[0023]        expected : HTTP 400; số dư account B không đổi  source=console
+INFO[0023]        actual   : HTTP 404  |  error.code=ACCOUNT_NOT_FOUND  |  số dư B 1,000,000 → 1,000,000  source=console
+INFO[0023]   ❌ TC21  [Negative] date = "06-09-2026" (sai định dạng ISO)  source=console
+INFO[0023]        expected : HTTP 400 (lỗi định dạng date-time)  source=console
+INFO[0023]        actual   : HTTP 201  |  data.date=2026-06-09T00:00:00.000Z  source=console
+INFO[0023]   ❌ TC26  [Negative] categoryId là category của user B  source=console
+INFO[0023]        expected : HTTP 400 (với A coi như category không tồn tại)  source=console
+INFO[0023]        actual   : HTTP 404  |  error.code=CATEGORY_NOT_FOUND  source=console
+INFO[0023] ==========================================================================  source=console
+
+
+  █ THRESHOLDS 
+
+    checks
+    ✗ 'rate==1.00' rate=70.37%
+
+    http_req_failed
+    ✓ 'rate==0' rate=0.00%
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 27     1.17187/s
+    checks_succeeded...: 70.37% 19 out of 27
+    checks_failed......: 29.62% 8 out of 27
+
+    ✗ TC01 — [Happy] Tạo chi tiêu đầy đủ field, category child
+      ↳  0% — ✓ 0 / ✗ 1
+    ✓ TC02 — [Happy] Không gửi note, chọn category parent
+    ✓ TC03 — [Happy] Gửi note = null tường minh
+    ✓ TC04 — [Edge] spentAt ở tương lai xa (2030) — không bị chặn
+    ✗ TC05 — [Edge] amount = 0.01 (nhỏ nhất > 0)
+      ↳  0% — ✓ 0 / ✗ 1
+    ✓ TC06 — [Edge] spentAt = thời điểm hiện tại
+    ✓ TC07 — [Edge] note dài đúng 500 ký tự
+    ✓ TC08 — [Edge] note 501 ký tự — vượt giới hạn
+    ✓ TC09 — [Edge] amount có 3 chữ số thập phân (100.005)
+    ✓ TC27 — [Edge] amount cực lớn, tràn DECIMAL của DB
+    ✓ TC10 — [Negative] amount = 0
+    ✓ TC11 — [Negative] amount âm (-50000)
+    ✓ TC12 — [Negative] amount = "abc" (sai định dạng)
+    ✗ TC13 — [Negative] amount là number thay vì chuỗi decimal
+      ↳  0% — ✓ 0 / ✗ 1
+    ✗ TC14 — [Negative] categoryId không tồn tại
+      ↳  0% — ✓ 0 / ✗ 1
+    ✓ TC15 — [Negative] thiếu categoryId (bắt buộc với EXPENSE)
+    ✓ TC16 — [Negative] categoryId là category loại INCOME
+    ✗ TC17 — [Negative] accountId (fromAccountId) không tồn tại
+      ↳  0% — ✓ 0 / ✗ 1
+    ✗ TC18 — [Negative] fromAccountId là account của user B
+      ↳  0% — ✓ 0 / ✗ 1
+    ✓ TC19 — [Negative] thiếu fromAccountId
+    ✓ TC20 — [Negative] thiếu spentAt (date)
+    ✗ TC21 — [Negative] date = "06-09-2026" (sai định dạng ISO)
+      ↳  0% — ✓ 0 / ✗ 1
+    ✓ TC22 — [Negative] chưa đăng nhập (không cookie session)
+    ✓ TC23 — [Negative] amount=0 + categoryId sai + account của user khác
+    ✓ TC24 — [Negative] body rỗng {}
+    ✓ TC25 — [Negative] note là number thay vì chuỗi
+    ✗ TC26 — [Negative] categoryId là category của user B
+      ↳  0% — ✓ 0 / ✗ 1
+
+    HTTP
+    http_req_duration..............: avg=158.69ms max=1.72s 
+      { expected_response:true }...: avg=158.69ms max=1.72s 
+    http_req_failed................: 0.00% 0 out of 64
+    http_reqs......................: 64    2.777767/s
+
+    EXECUTION
+    iteration_duration.............: avg=23.04s   max=23.04s
+    iterations.....................: 1     0.043403/s
+    vus............................: 1     min=1       max=1
+    vus_max........................: 1     min=1       max=1
+
+    NETWORK
+    data_received..................: 34 kB 1.5 kB/s
+    data_sent......................: 11 kB 471 B/s
+
+
+
+
+running (00m23.0s), 0/1 VUs, 1 complete and 0 interrupted iterations
+default ✓ [======================================] 1 VUs  00m23.0s/10m0s  1/1 shared iters
+ERRO[0023] thresholds on metrics 'checks' have been crossed
