@@ -15,9 +15,20 @@ info:
     | `BORROW`   | bắt buộc      | phải null   | phải null  | bắt buộc  | `from` **tăng** |
     | `LEND`     | bắt buộc      | phải null   | phải null  | bắt buộc  | `from` **giảm** |
 
-    Mọi id tham chiếu (`fromAccountId`, `toAccountId`, `categoryId`, `contactId`) phải
-    thuộc về user đang đăng nhập — trừ category `SYSTEM` dùng chung. Sai chủ sở hữu
-    trả `403`, không tồn tại trả `404`.
+    **Id tham chiếu trong body / query lọc** (`fromAccountId`, `toAccountId`,
+    `categoryId`, `contactId`, `accountId`) được coi là **dữ liệu đầu vào**: nếu id
+    không tồn tại **hoặc** thuộc user khác (trừ category `SYSTEM` dùng chung), server
+    gộp cả hai trường hợp và trả **`400 VALIDATION_ERROR`** kèm `error.details.<field>`
+    — không phân biệt `403`/`404` để không tiết lộ tài nguyên của user khác có tồn
+    tại hay không.
+
+    `404` chỉ dùng cho **bản thân giao dịch** được địa chỉ hoá qua `{transactionId}`
+    (GET/PATCH/DELETE) khi giao dịch không tồn tại hoặc không thuộc user đang đăng
+    nhập.
+
+    Số dư `fromAccount` (và `toAccount` với TRANSFER) được cập nhật **ngay** trong
+    cùng `$transaction` khi tạo/sửa/xoá, **không phụ thuộc** giá trị `date` — giao
+    dịch ghi ngày tương lai vẫn tác động số dư hiện tại tức thì.
 
 servers:
   - url: /api
@@ -120,10 +131,6 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -135,6 +142,16 @@ paths:
         Ghi giao dịch và cập nhật số dư trong cùng một `$transaction` của Prisma.
         Với `TRANSFER` giữa hai nguồn tiền khác tiền tệ, gửi thêm `receiveAmount` —
         số tiền thực nhận ở `toAccount`.
+
+        Validate đầu vào (đều trả `400`, không tạo bản ghi, không đổi số dư):
+        - `amount`: **chuỗi** decimal khớp `PositiveAmount`, `> 0`, tối đa 2 chữ số
+          thập phân, tối đa 16 chữ số phần nguyên. Gửi dạng JSON number bị từ chối.
+        - `date`: **chuỗi ISO 8601** (`date` hoặc `date-time`). Các định dạng khác
+          như `06-09-2026` bị từ chối (không tự suy diễn ngày/tháng).
+        - `note`: chuỗi hoặc `null`, tối đa 500 ký tự.
+        - `fromAccountId` / `toAccountId` / `categoryId` / `contactId`: id không tồn
+          tại hoặc thuộc user khác → `400` với `error.details.<field>`.
+        - `date` ở tương lai **không** bị chặn và vẫn tác động số dư hiện tại ngay.
       requestBody:
         required: true
         content:
@@ -152,10 +169,6 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
         '500':
@@ -176,12 +189,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TransactionResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
@@ -195,6 +204,10 @@ paths:
         Cho phép đổi cả `type`. Khi đổi `type`, request phải gửi kèm đủ bộ field hợp lệ
         của type mới — server kiểm lại toàn bộ ràng buộc trong bảng ở phần mô tả và
         tính lại số dư của mọi account bị ảnh hưởng (cũ lẫn mới).
+
+        Áp dụng cùng quy tắc validate đầu vào như `POST /transactions` (xem mô tả ở đó):
+        `amount` là chuỗi decimal dương, `date` là chuỗi ISO 8601, id tham chiếu sai
+        (không tồn tại / của user khác) trả `400` kèm `error.details.<field>`.
       requestBody:
         required: true
         content:
@@ -212,8 +225,6 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -229,12 +240,8 @@ paths:
       responses:
         '204':
           description: Đã xoá.
-        '400':
-          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
@@ -304,7 +311,10 @@ components:
 
     PositiveAmount:
       type: string
-      description: Số tiền dương, tối đa 2 chữ số thập phân. Hướng tiền do `type` quyết định, không dùng số âm.
+      description: |
+        Số tiền dương, **luôn là chuỗi** (JSON number bị từ chối với `400`), tối đa
+        2 chữ số thập phân và 16 chữ số phần nguyên. `> 0`. Hướng tiền do `type`
+        quyết định, không dùng số âm.
       pattern: '^\d{1,16}(\.\d{1,2})?$'
       example: '150000.00'
 
@@ -487,6 +497,10 @@ components:
         date:
           type: string
           format: date-time
+          description: |
+            Chuỗi ISO 8601 — `date-time` (`2026-08-15T09:30:00Z`) hoặc `date`
+            (`2026-08-15`). Định dạng khác (vd `15-08-2026`) trả `400`. Cho phép
+            ngày ở tương lai.
           example: '2026-08-15T09:30:00Z'
         note:
           type: string
@@ -494,15 +508,22 @@ components:
           maxLength: 500
         fromAccountId:
           type: string
+          description: Bắt buộc. Phải là account của user đang đăng nhập, chưa xoá — nếu không, `400` (`error.details.fromAccountId`).
         toAccountId:
           type: string
           nullable: true
+          description: Chỉ TRANSFER. Phải là account của user, khác `fromAccountId` — nếu không, `400`.
         categoryId:
           type: string
           nullable: true
+          description: |
+            Bắt buộc với INCOME/EXPENSE, phải `null` với type khác. Phải là category
+            đọc được (của user hoặc `SYSTEM`), chưa xoá, và `type` khớp giao dịch —
+            nếu không, `400` (`error.details.categoryId`).
         contactId:
           type: string
           nullable: true
+          description: Bắt buộc với BORROW/LEND, phải `null` với type khác. Phải là contact của user, chưa xoá — nếu không, `400`.
 
     UpdateTransactionRequest:
       allOf:
@@ -515,8 +536,15 @@ components:
   responses:
     BadRequest:
       description: |
-        Dữ liệu không hợp lệ: sai ràng buộc field theo `type`, số tiền ≤ 0,
-        `toAccountId` trùng `fromAccountId`, hoặc `categoryId` khác `type` giao dịch.
+        Dữ liệu không hợp lệ. Bao gồm:
+        - sai ràng buộc field theo `type` (field thừa/thiếu), số tiền ≤ 0, sai định
+          dạng `amount` (JSON number, > 2 chữ số thập phân, quá 16 chữ số nguyên);
+        - `date` không đúng ISO 8601;
+        - `toAccountId` trùng `fromAccountId`, `categoryId` khác `type` giao dịch;
+        - id tham chiếu (`fromAccountId`, `toAccountId`, `categoryId`, `contactId`,
+          hoặc `accountId` khi lọc danh sách) không tồn tại hoặc thuộc user khác.
+
+        `code` luôn là `VALIDATION_ERROR`; `details` liệt kê từng field sai.
       content:
         application/json:
           schema:
@@ -526,7 +554,7 @@ components:
               code: VALIDATION_ERROR
               message: Dữ liệu không hợp lệ.
               details:
-                categoryId: Giao dịch chi tiêu phải chọn danh mục loại EXPENSE.
+                categoryId: Danh mục không hợp lệ hoặc không tồn tại.
 
     Unauthorized:
       description: Chưa đăng nhập hoặc phiên đã hết hạn.
@@ -540,20 +568,11 @@ components:
               message: Vui lòng đăng nhập để tiếp tục.
               details: {}
 
-    Forbidden:
-      description: Giao dịch hoặc một trong các tài nguyên tham chiếu thuộc người dùng khác.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-          example:
-            error:
-              code: FORBIDDEN
-              message: Bạn không có quyền thao tác trên giao dịch này.
-              details: {}
-
     NotFound:
-      description: Không tìm thấy giao dịch hoặc tài nguyên tham chiếu (account/category/contact).
+      description: |
+        Không tìm thấy **giao dịch** được địa chỉ hoá qua `{transactionId}` (không
+        tồn tại, đã xoá mềm, hoặc thuộc user khác). Id tham chiếu sai trong body/query
+        **không** rơi vào đây mà trả `400` (xem `BadRequest`).
       content:
         application/json:
           schema:

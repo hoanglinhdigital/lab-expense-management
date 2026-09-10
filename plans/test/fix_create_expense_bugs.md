@@ -32,6 +32,19 @@ Chuẩn đối chiếu PASS/FAIL: `test/transaction/expense/testscript.js` (TC01
 - Thêm: `plans/test/fix_create_expense_bugs.md` (file này).
 - Xóa: không.
 
+## Cập nhật API spec (`docs/api-spec/transaction.yaml`)
+
+Đồng bộ spec với kỳ vọng trong test case (test case là chuẩn, không phải spec cũ):
+- [x] Id tham chiếu sai (không tồn tại **hoặc** của user khác) → **400 `VALIDATION_ERROR`**
+  kèm `error.details.<field>`, không còn `403`/`404`. Áp dụng cho `fromAccountId`,
+  `toAccountId`, `categoryId`, `contactId`, và `accountId` khi lọc danh sách.
+- [x] `404` chỉ còn cho **bản thân giao dịch** qua `{transactionId}` (GET/PATCH/DELETE).
+  Gỡ toàn bộ `'403'` + component `Forbidden`; gỡ `'404'`/`'403'` khỏi POST và GET list.
+- [x] `PositiveAmount`: nêu rõ **luôn là chuỗi**, JSON number bị từ chối.
+- [x] `date`: nêu rõ chỉ nhận ISO 8601 (`date`/`date-time`), định dạng khác → 400.
+- [x] Ghi chú số dư cập nhật ngay, không phụ thuộc `date` (kể cả ngày tương lai).
+- [x] Đồng bộ code `resolveContact` + bộ lọc `accountId` của list sang 400 cho khớp spec.
+
 ## Verify
 - [x] `npm run build`
 - [x] `npm run lint`
