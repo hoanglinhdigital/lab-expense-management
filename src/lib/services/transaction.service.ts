@@ -10,9 +10,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { TransactionType } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import {
-  accountNotFound,
   conflict,
-  contactNotFound,
   transactionNotFound,
   validationError,
 } from "@/lib/api/errors";
@@ -117,7 +115,11 @@ async function resolveContact(userId: string, contactId: string) {
     select: { id: true, isDeleted: true },
   });
 
-  if (!contact) throw contactNotFound();
+  if (!contact) {
+    throw validationError({
+      contactId: "Đối tượng không hợp lệ hoặc không tồn tại.",
+    });
+  }
   if (contact.isDeleted) {
     throw conflict(
       "CONTACT_DELETED",
@@ -319,7 +321,11 @@ async function buildListWhere(
       where: { id: query.accountId, userId, isDeleted: false },
       select: { id: true },
     });
-    if (!account) throw accountNotFound();
+    if (!account) {
+      throw validationError({
+        accountId: "Nguồn tiền không hợp lệ hoặc không tồn tại.",
+      });
+    }
 
     // Khớp khi account là nguồn **hoặc** đích.
     and.push({
