@@ -1,0 +1,18 @@
+# Vi du bien can khai bao cho module "database".
+# db_username / db_password la sensitive - KHONG dien gia tri that vao file .example nay,
+# chi dien trong terraform.tfvars that (da gitignore) hoac AWS Secrets Manager.
+
+project_name       = "expense-mgmt"
+environment         = "dev"
+data_subnet_ids     = ["subnet-xxxxxxxx", "subnet-yyyyyyyy"] # lay tu output cua module network
+rds_sg_id           = "sg-xxxxxxxx"                          # lay tu output cua module security
+engine_version      = "8.0"
+db_instance_class   = "db.t3.small"
+allocated_storage   = 20
+db_name             = "expense_db"
+db_username         = "" # KHONG commit gia tri that
+db_password         = "" # KHONG commit gia tri that
+multi_az            = false # dev: Single-AZ (trade-off chi phi). prod: bat buoc true
+
+# TAM THOI cho dev - RDS nhan public IP de seed data qua Internet. KHONG bat o prod.
+publicly_accessible = false

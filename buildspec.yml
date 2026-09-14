@@ -1,0 +1,45 @@
+version: 0.2
+
+# Bien moi truong AWS_DEFAULT_REGION, AWS_ACCOUNT_ID, ECR_REPOSITORY_URL,
+# CONTAINER_NAME, CONTAINER_PORT, ECS_TASK_FAMILY duoc CodeBuild Project
+# (infra/terraform/modules/cicd) truyen vao san - khong hardcode o day.
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region "$AWS_DEFAULT_REGION" | docker login --username AWS --password-stdin "$ECR_REPOSITORY_URL"
+      - IMAGE_TAG="${CODEBUILD_RESOLVED_SOURCE_VERSION:0:8}"
+      - IMAGE_URI="$ECR_REPOSITORY_URL:$IMAGE_TAG"
+
+  build:
+    commands:
+      - echo Building Docker image $IMAGE_URI...
+      - docker build -t "$IMAGE_URI" .
+
+  post_build:
+    commands:
+      - echo Pushing Docker image...
+      - docker push "$IMAGE_URI"
+
+      - echo Writing imagedefinitions.json...
+      - printf '[{"name":"%s","imageUri":"%s"}]' "$CONTAINER_NAME" "$IMAGE_URI" > imagedefinitions.json
+
+      # Lay ECS Task Definition dang active lam nen, xoa cac field chi doc,
+      # roi thay image cua dung container bang image vua build/push.
+      - echo Rendering taskdef.json...
+      - aws ecs describe-task-definition --task-definition "$ECS_TASK_FAMILY" --query "taskDefinition" > taskdef-raw.json
+      - jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)' taskdef-raw.json > taskdef.json
+      - jq --arg IMAGE "$IMAGE_URI" --arg NAME "$CONTAINER_NAME" '(.containerDefinitions[] | select(.name == $NAME) | .image) = $IMAGE' taskdef.json > taskdef.json.tmp
+      - mv taskdef.json.tmp taskdef.json
+
+      # appspec.yaml la template checked-in tai repo root, chi thay container
+      # name/port thuc te truoc khi dong goi thanh artifact.
+      - echo Rendering appspec.yaml...
+      - sed -i "s#__CONTAINER_NAME__#$CONTAINER_NAME#g; s#__CONTAINER_PORT__#$CONTAINER_PORT#g" appspec.yaml
+
+artifacts:
+  files:
+    - imagedefinitions.json
+    - taskdef.json
+    - appspec.yaml

@@ -1,0 +1,54 @@
+# Copy file nay thanh terraform.tfvars va dien gia tri that.
+# terraform.tfvars (file that) DA duoc gitignore - KHONG commit len Git.
+
+project_name = "expense-mgmt"
+environment   = "dev"
+region        = "ap-northeast-1"
+
+vpc_cidr            = "10.0.0.0/16"
+az_count             = 2
+public_subnet_cidrs  = ["10.0.0.0/24", "10.0.1.0/24"]
+app_subnet_cidrs     = ["10.0.10.0/24", "10.0.11.0/24"]
+data_subnet_cidrs    = ["10.0.20.0/24", "10.0.21.0/24"]
+nat_gateway_count    = 1 # dev trade-off: 1 NAT dung chung 2 AZ
+
+container_port       = 3000
+image_tag            = "latest"
+ecs_task_cpu         = 256
+ecs_task_memory      = 512
+ecs_desired_count    = 1 # dev trade-off: prod toi thieu 2
+cpu_alarm_threshold  = 80
+
+db_engine_version    = "8.0"
+db_instance_class    = "db.t3.small"
+db_allocated_storage = 20
+db_name              = "expense_db"
+db_username          = "" # BAT BUOC dien gia tri that, KHONG commit
+db_password          = "" # BAT BUOC dien gia tri that, KHONG commit
+rds_multi_az         = false # dev trade-off: Single-AZ
+
+# TAM THOI cho dev: mo RDS ra Internet de seed data tu may ca nhan.
+rds_public_access_enabled = false # doi thanh true khi can, nho tat lai sau khi xong
+allowed_ip_cidrs          = []    # vd ["203.0.113.10/32"] - KHONG dung 0.0.0.0/0
+
+# Container tu chay migrate deploy + seed (idempotent) khi khoi dong
+run_db_seed = true
+
+# dev trade-off: tat TLS ECS<->RDS (Amazon RDS CA khong nam trong CA store
+# mac dinh Node.js). prod phai true + cau hinh RDS CA bundle.
+database_ssl_enabled = false
+
+# dev trade-off: ALB dev chua co HTTPS listener. prod phai true.
+cookie_secure_enabled = false
+
+alert_email          = "" # BAT BUOC dien, khong co default
+
+# CodeDeploy Blue/Green - ALB test listener. Rong = khong mo SG rule nay.
+test_listener_port = 8080
+allowed_test_cidrs = [] # vd ["203.0.113.10/32"] - KHONG dung 0.0.0.0/0
+
+# CI/CD - CodePipeline + CodeBuild + CodeDeploy Blue/Green
+github_owner            = "" # BAT BUOC dien - GitHub org/user chua repo source
+github_repo             = "" # BAT BUOC dien - ten repo source
+github_branch           = "main"
+codestar_connection_arn = "" # BAT BUOC dien - ARN CodeStar Connection da AVAILABLE

@@ -1,0 +1,24 @@
+# Vi du bien can khai bao cho module "compute" - KHONG chua secret.
+# database_url la sensitive, chi dien trong terraform.tfvars that (da gitignore).
+
+project_name         = "expense-mgmt"
+environment           = "dev"
+vpc_id                = "vpc-xxxxxxxx"
+public_subnet_ids     = ["subnet-aaaaaaaa", "subnet-bbbbbbbb"]
+app_subnet_ids        = ["subnet-cccccccc", "subnet-dddddddd"]
+alb_sg_id             = "sg-xxxxxxxx"
+ecs_sg_id             = "sg-yyyyyyyy"
+container_port        = 3000
+test_listener_port    = 8080 # ALB test listener (target group green) - CodeDeploy Blue/Green
+ecr_repository_url    = "123456789012.dkr.ecr.ap-northeast-1.amazonaws.com/expense-mgmt-dev-ecr-app-01"
+image_tag             = "latest"
+ecs_task_cpu          = 256
+ecs_task_memory       = 512
+desired_count         = 1 # dev: trade-off, prod toi thieu 2
+database_url          = "" # KHONG commit gia tri that
+run_db_seed           = true # container tu chay migrate deploy + seed (idempotent) khi start
+database_ssl_enabled  = false # dev trade-off: tat TLS ECS<->RDS (xem comment tai bien trong variable.tf)
+cookie_secure_enabled = false # dev trade-off: ALB chua co HTTPS listener (xem comment tai bien trong variable.tf)
+alert_email           = "" # bat buoc dien, khong co default
+cpu_alarm_threshold   = 80
+log_retention_days    = 30
