@@ -25,6 +25,17 @@ function generateToken(): string {
   return randomBytes(32).toString("hex");
 }
 
+/**
+ * Cookie `Secure` bị trình duyệt bỏ qua trên kết nối HTTP thuần (vd ALB dev
+ * chưa có HTTPS listener) — set COOKIE_SECURE=false để tắt tạm thời. Khi
+ * không set, giữ nguyên hành vi mặc định theo NODE_ENV.
+ */
+function isCookieSecure(): boolean {
+  if (process.env.COOKIE_SECURE === "false") return false;
+  if (process.env.COOKIE_SECURE === "true") return true;
+  return process.env.NODE_ENV === "production";
+}
+
 /** Tạo phiên mới trong DB và gắn cookie vào response đang được dựng. */
 export async function createSession(userId: string): Promise<void> {
   const token = generateToken();
@@ -36,7 +47,7 @@ export async function createSession(userId: string): Promise<void> {
   cookieStore.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: isCookieSecure(),
     path: "/",
     expires: expiresAt,
   });
@@ -97,7 +108,7 @@ export async function destroySession(): Promise<void> {
   cookieStore.set(SESSION_COOKIE_NAME, "", {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: isCookieSecure(),
     path: "/",
     maxAge: 0,
   });

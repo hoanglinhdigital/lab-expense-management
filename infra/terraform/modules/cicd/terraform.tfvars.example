@@ -1,0 +1,36 @@
+# Vi du bien can khai bao cho module "cicd" - KHONG chua secret.
+# codestar_connection_arn va alert_email chi dien gia tri that trong
+# terraform.tfvars (da gitignore), khong commit len Git.
+
+project_name = "expense-mgmt"
+environment  = "dev"
+
+ecr_repository_arn = "arn:aws:ecr:ap-northeast-1:123456789012:repository/expense-mgmt-dev-ecr-app-01" # output tu module storage
+ecr_repository_url = "123456789012.dkr.ecr.ap-northeast-1.amazonaws.com/expense-mgmt-dev-ecr-app-01"  # output tu module storage
+
+ecs_cluster_name         = "expense-mgmt-dev-ecs-cluster-01" # output tu module compute
+ecs_service_name         = "expense-mgmt-dev-ecs-service-01" # output tu module compute
+ecs_task_family          = "expense-mgmt-dev-task-app-01"    # output tu module compute
+container_name           = "expense-mgmt-dev-container-app-01"
+container_port           = 3000
+alb_listener_prod_arn    = "arn:aws:elasticloadbalancing:ap-northeast-1:123456789012:listener/app/xxx/yyy/zzz" # output tu module compute
+alb_listener_test_arn    = "arn:aws:elasticloadbalancing:ap-northeast-1:123456789012:listener/app/xxx/yyy/www" # output tu module compute
+target_group_blue_name   = "expense-mgmt-dev-tg-app-01" # output tu module compute
+target_group_green_name  = "expense-mgmt-dev-tg-app-02" # output tu module compute
+
+github_owner             = "your-github-org"
+github_repo              = "lab-expense-management"
+github_branch            = "main"
+codestar_connection_arn  = "" # bat buoc dien, ARN CodeStar Connection da AVAILABLE tren AWS Console
+
+alert_email = "" # bat buoc dien, khong co default
+
+codebuild_compute_type = "BUILD_GENERAL1_SMALL"
+codebuild_image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+log_retention_days     = 30
+
+artifact_bucket_force_destroy = false
+
+codedeploy_deployment_config           = "CodeDeployDefault.ECSAllAtOnce" # dev trade-off, prod nen dung Linear/Canary
+deployment_ready_wait_minutes          = 5
+blue_instance_termination_wait_minutes = 5

@@ -1,0 +1,10 @@
+# Terraform working files - khong commit
+**/.terraform/
+**/.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+
+# File tfvars that chua secret - khong commit, chi giu ban .example
+environments/*/terraform.tfvars

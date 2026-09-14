@@ -1,0 +1,14 @@
+# Vi du bien can khai bao cho module "security" - KHONG chua secret.
+project_name   = "expense-mgmt"
+environment     = "dev"
+vpc_id          = "vpc-xxxxxxxx" # lay tu output cua module network
+container_port  = 3000
+db_port         = 3306
+
+# TAM THOI cho dev - mo them ingress RDS cho IP ca nhan. KHONG bat o prod, khong dung 0.0.0.0/0.
+enable_public_rds_access = false
+allowed_ip_cidrs         = [] # vd ["203.0.113.10/32"]
+
+# CodeDeploy Blue/Green - ALB test listener. Rong = khong tao SG rule nay.
+test_listener_port = 8080
+allowed_test_cidrs = [] # vd ["203.0.113.10/32"]

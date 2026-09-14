@@ -1,0 +1,4 @@
+# Vi du bien can khai bao cho module "storage" - KHONG chua secret.
+project_name          = "expense-mgmt"
+environment            = "dev"
+image_tag_mutability   = "MUTABLE"

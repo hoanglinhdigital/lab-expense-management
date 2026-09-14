@@ -1,0 +1,30 @@
+node_modules
+.next
+.git
+.github
+.claude
+.agents
+.windsurf
+
+# secrets - khong bao gio dua vao build context
+.env
+.env.*
+!.env.example
+
+# generated - se duoc `prisma generate` sinh lai trong builder stage
+src/generated
+
+# khong can cho build/runtime image
+docs
+plans
+infra
+test
+tests
+e2e-test
+test-results
+playwright-report
+blob-report
+coverage
+README.md
+*.md
+*.tsbuildinfo
