@@ -48,6 +48,16 @@ variable "container_port" {
   type = number
 }
 
+variable "ecs_execution_role_arn" {
+  description = "ARN IAM Role execution cua ECS Task (output tu module compute) - dung cho iam:PassRole khi CodePipeline RegisterTaskDefinition"
+  type        = string
+}
+
+variable "ecs_task_role_arn" {
+  description = "ARN IAM Role task cua ECS Task (output tu module compute) - dung cho iam:PassRole khi CodePipeline RegisterTaskDefinition"
+  type        = string
+}
+
 variable "alb_listener_prod_arn" {
   type = string
 }
@@ -136,9 +146,29 @@ variable "codedeploy_deployment_config" {
 }
 
 variable "deployment_ready_wait_minutes" {
-  description = "So phut cho phep kiem tra qua test listener truoc khi tiep tuc shift traffic prod (STOP_DEPLOYMENT neu qua han)"
+  description = "So phut cho phep kiem tra qua test listener truoc khi CodeDeploy tu dong xu ly theo deployment_ready_action_on_timeout"
   type        = number
   default     = 5
+}
+
+variable "deployment_ready_action_on_timeout" {
+  description = <<-EOT
+    Hanh dong khi het deployment_ready_wait_minutes ma khong co thao tac "Reroute
+    traffic" thu cong:
+    - CONTINUE_DEPLOYMENT: tu dong shift traffic prod sang green, khong can bam
+      tay. Hop cho dev vi muon switch nhanh, chap nhan bo qua buoc kiem tra
+      thu cong qua test listener.
+    - STOP_DEPLOYMENT: dung lai, giu nguyen "blue", huy "green" - bat buoc
+      nguoi van hanh tu bam "Reroute traffic" de tiep tuc. Nen dung cho prod
+      de co buoc kiem tra thu cong truoc khi len traffic that.
+  EOT
+  type        = string
+  default     = "STOP_DEPLOYMENT"
+
+  validation {
+    condition     = contains(["CONTINUE_DEPLOYMENT", "STOP_DEPLOYMENT"], var.deployment_ready_action_on_timeout)
+    error_message = "deployment_ready_action_on_timeout chi nhan CONTINUE_DEPLOYMENT hoac STOP_DEPLOYMENT."
+  }
 }
 
 variable "blue_instance_termination_wait_minutes" {

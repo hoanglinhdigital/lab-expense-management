@@ -210,3 +210,20 @@ variable "codestar_connection_arn" {
   description = "ARN CodeStar Connection (GitHub) da duoc confirm (AVAILABLE) tren AWS Console - bat buoc khai bao trong terraform.tfvars"
   type        = string
 }
+
+variable "deployment_ready_wait_minutes" {
+  description = "So phut cho phep kiem tra qua test listener truoc khi CodeDeploy tu dong xu ly theo deployment_ready_action_on_timeout"
+  type        = number
+  default     = 5
+}
+
+variable "deployment_ready_action_on_timeout" {
+  description = <<-EOT
+    dev trade-off: CONTINUE_DEPLOYMENT de tu dong shift traffic sau
+    deployment_ready_wait_minutes, khong can bam tay "Reroute traffic".
+    prod nen dung STOP_DEPLOYMENT de bat buoc kiem tra thu cong qua test
+    listener truoc khi len traffic that.
+  EOT
+  type        = string
+  default     = "STOP_DEPLOYMENT"
+}

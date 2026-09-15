@@ -64,10 +64,17 @@ export interface ReportShortcut {
   id: string;
   label: string;
   icon: LucideIcon;
+  /** Có route đích thật thì điều hướng bằng `Link`; không có thì hiện thông báo "đang phát triển". */
+  href?: string;
 }
 
 export const REPORT_SHORTCUTS: ReportShortcut[] = [
-  { id: "expense-analysis", label: "Expense analysis", icon: TrendingUp },
+  {
+    id: "expense-analysis",
+    label: "Expense analysis",
+    icon: TrendingUp,
+    href: "/report/expense-analysis",
+  },
   { id: "income-analysis", label: "Income analysis", icon: TrendingDown },
   { id: "loans", label: "Money lent/borrowed", icon: ListOrdered },
   { id: "payer-payee", label: "Payer/Payee", icon: CircleUserRound },

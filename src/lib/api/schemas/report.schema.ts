@@ -37,6 +37,7 @@ export const expenseByCategoryQuerySchema = withDateOrder(
     ...periodFields,
     ...accountFilter,
     flow: z.enum(["EXPENSE", "INCOME"]).default("EXPENSE"),
+    parentId: z.string().trim().min(1).optional(),
   }),
 );
 

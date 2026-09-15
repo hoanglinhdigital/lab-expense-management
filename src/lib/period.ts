@@ -133,6 +133,34 @@ export function lastMonthRange(now: Date = new Date()): PeriodRange {
   return { ...monthRange(year, (month + 12) % 12), label: "Last month" };
 }
 
+/**
+ * Khoảng nhiều tháng liên tiếp (dùng cho picker tháng dạng khoảng của màn Expense
+ * Analysis) — không gắn với `PeriodKind`/`PeriodRange` ở trên để tránh ảnh hưởng
+ * `HistoryPeriodScreen`. `monthIndex`: 0 = January .. 11 = December.
+ */
+export function monthSpanRange(
+  fromYear: number,
+  fromMonth: number,
+  toYear: number,
+  toMonth: number,
+): { from: Date; to: Date; label: string } {
+  const from = startOfDay(new Date(fromYear, fromMonth, 1));
+  const to = endOfDay(new Date(toYear, toMonth + 1, 0));
+  const fromLabel = `${fromMonth + 1}/${fromYear}`;
+  const toLabel = `${toMonth + 1}/${toYear}`;
+  return { from, to, label: fromLabel === toLabel ? fromLabel : `${fromLabel} - ${toLabel}` };
+}
+
+/** Khoảng nhiều năm liên tiếp — cùng lý do tách riêng như `monthSpanRange`. */
+export function yearSpanRange(
+  fromYear: number,
+  toYear: number,
+): { from: Date; to: Date; label: string } {
+  const from = startOfDay(new Date(fromYear, 0, 1));
+  const to = endOfDay(new Date(toYear, 11, 31));
+  return { from, to, label: fromYear === toYear ? `${fromYear}` : `${fromYear}-${toYear}` };
+}
+
 const QUARTER_LABELS = ["Quarter I", "Quarter II", "Quarter III", "Quarter IV"];
 
 /** `quarter`: 1 .. 4. */
