@@ -118,7 +118,7 @@ resource "aws_iam_role_policy" "codebuild" {
       {
         Sid      = "ArtifactBucket"
         Effect   = "Allow"
-        Action   = ["s3:GetObject", "s3:PutObject", "s3:GetBucketLocation"]
+        Action   = ["s3:GetObject", "s3:GetObjectVersion", "s3:PutObject", "s3:GetBucketLocation"]
         Resource = [aws_s3_bucket.artifacts.arn, "${aws_s3_bucket.artifacts.arn}/*"]
       }
     ]
@@ -236,8 +236,11 @@ resource "aws_codedeploy_deployment_group" "app" {
 
   blue_green_deployment_config {
     deployment_ready_option {
-      action_on_timeout    = "STOP_DEPLOYMENT"
-      wait_time_in_minutes = var.deployment_ready_wait_minutes
+      action_on_timeout = var.deployment_ready_action_on_timeout
+      # CodeDeploy tu choi request neu wait_time_in_minutes > 0 ma
+      # action_on_timeout = CONTINUE_DEPLOYMENT (InvalidBlueGreenDeploymentConfigurationException).
+      # CONTINUE_DEPLOYMENT nghia la chuyen traffic NGAY, khong co "cho roi tu dong chuyen".
+      wait_time_in_minutes = var.deployment_ready_action_on_timeout == "STOP_DEPLOYMENT" ? var.deployment_ready_wait_minutes : 0
     }
 
     terminate_blue_instances_on_deployment_success {
@@ -311,7 +314,7 @@ resource "aws_iam_role_policy" "codepipeline" {
       {
         Sid      = "ArtifactBucket"
         Effect   = "Allow"
-        Action   = ["s3:GetObject", "s3:PutObject", "s3:GetBucketVersioning"]
+        Action   = ["s3:GetObject", "s3:GetObjectVersion", "s3:PutObject", "s3:GetBucketVersioning"]
         Resource = [aws_s3_bucket.artifacts.arn, "${aws_s3_bucket.artifacts.arn}/*"]
       },
       {
@@ -331,6 +334,7 @@ resource "aws_iam_role_policy" "codepipeline" {
         Effect = "Allow"
         Action = [
           "codedeploy:CreateDeployment",
+          "codedeploy:GetApplication",
           "codedeploy:GetDeployment",
           "codedeploy:GetDeploymentConfig",
           "codedeploy:GetApplicationRevision",
@@ -341,6 +345,28 @@ resource "aws_iam_role_policy" "codepipeline" {
           aws_codedeploy_deployment_group.app.arn,
           "arn:aws:codedeploy:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:deploymentconfig:*"
         ]
+      },
+      {
+        # CodeDeployToECS dang ky task definition moi tu taskdef.json truoc
+        # khi tao deployment - can quyen nay tren identity cua CodePipeline.
+        Sid      = "ECSRegisterTaskDefinition"
+        Effect   = "Allow"
+        Action   = ["ecs:RegisterTaskDefinition"]
+        Resource = "arn:aws:ecs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:task-definition/${var.ecs_task_family}:*"
+      },
+      {
+        # PassRole cho dung 2 role ECS Task da co (execution + task), gioi
+        # han boi dieu kien service ecs-tasks.amazonaws.com - khong PassRole
+        # tuy y sang role khac.
+        Sid      = "PassRoleEcsTaskRoles"
+        Effect   = "Allow"
+        Action   = ["iam:PassRole"]
+        Resource = [var.ecs_execution_role_arn, var.ecs_task_role_arn]
+        Condition = {
+          StringEquals = {
+            "iam:PassedToService" = "ecs-tasks.amazonaws.com"
+          }
+        }
       }
     ]
   })

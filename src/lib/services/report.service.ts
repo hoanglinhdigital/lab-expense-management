@@ -10,7 +10,7 @@
  */
 
 import { Prisma } from "@/generated/prisma/client";
-import { TransactionType } from "@/generated/prisma/enums";
+import { CategoryScope, TransactionType } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "@/lib/api/errors";
 import {
@@ -251,37 +251,61 @@ export async function getExpenseByCategory(
   const flowType =
     query.flow === "INCOME" ? TransactionType.INCOME : TransactionType.EXPENSE;
 
-  const [rows, rootOf] = await Promise.all([
-    prisma.transaction.groupBy({
-      by: ["categoryId", "fromAccountId"],
-      where: {
-        userId,
-        isDeleted: false,
-        type: flowType,
-        date: { gte: range.dateFrom, lte: range.dateTo },
-        ...accountFilter(query.accountId),
-      },
-      _sum: { amount: true },
-      _count: { _all: true },
-    }),
-    loadRootCategoryMap(userId),
-  ]);
+  // Không truyền `parentId`: gom theo danh mục cha level 1 (`rootOf`). Có `parentId`:
+  // chỉ tính giao dịch trong cây của `parentId`, gom theo danh mục con trực tiếp —
+  // category chỉ cho lồng một cấp nên `categoryId` của giao dịch chính là group key,
+  // không cần map `rootOf`.
+  let subtreeIds: string[] | null = null;
+  let rootOf: Map<string, string> | null = null;
 
-  // Gom về danh mục cha level 1 — chi tiêu của danh mục con cộng vào danh mục cha.
+  if (query.parentId) {
+    const parent = await prisma.category.findFirst({
+      where: {
+        id: query.parentId,
+        isDeleted: false,
+        OR: [{ scope: CategoryScope.SYSTEM }, { userId }],
+      },
+      select: { id: true, parentId: true },
+    });
+    if (!parent || parent.parentId !== null) {
+      throw notFound("NOT_FOUND", "Không tìm thấy dữ liệu dùng trong bộ lọc.", {
+        parentId: query.parentId,
+      });
+    }
+    subtreeIds = await expandCategoryIds(userId, query.parentId);
+  } else {
+    rootOf = await loadRootCategoryMap(userId);
+  }
+
+  const rows = await prisma.transaction.groupBy({
+    by: ["categoryId", "fromAccountId"],
+    where: {
+      userId,
+      isDeleted: false,
+      type: flowType,
+      date: { gte: range.dateFrom, lte: range.dateTo },
+      ...accountFilter(query.accountId),
+      ...(subtreeIds ? { categoryId: { in: subtreeIds } } : {}),
+    },
+    _sum: { amount: true },
+    _count: { _all: true },
+  });
+
+  // Gom về danh mục cha level 1 (hoặc danh mục con trực tiếp của `parentId`).
   const grouped = new Map<string, { amount: Decimal; transactionCount: number }>();
   const UNCATEGORIZED = "__uncategorized__";
 
   for (const row of rows) {
-    const rootId = row.categoryId
-      ? rootOf.get(row.categoryId) ?? row.categoryId
+    const groupId = row.categoryId
+      ? (rootOf ? rootOf.get(row.categoryId) ?? row.categoryId : row.categoryId)
       : UNCATEGORIZED;
 
-    const entry = grouped.get(rootId) ?? { amount: ZERO, transactionCount: 0 };
+    const entry = grouped.get(groupId) ?? { amount: ZERO, transactionCount: 0 };
     entry.amount = entry.amount.add(
       convertFrom(toDecimal(row._sum.amount), row.fromAccountId, context),
     );
     entry.transactionCount += row._count._all;
-    grouped.set(rootId, entry);
+    grouped.set(groupId, entry);
   }
 
   const categoryIds = [...grouped.keys()].filter((id) => id !== UNCATEGORIZED);

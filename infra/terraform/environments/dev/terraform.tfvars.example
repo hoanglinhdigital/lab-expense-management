@@ -52,3 +52,9 @@ github_owner            = "" # BAT BUOC dien - GitHub org/user chua repo source
 github_repo             = "" # BAT BUOC dien - ten repo source
 github_branch           = "main"
 codestar_connection_arn = "" # BAT BUOC dien - ARN CodeStar Connection da AVAILABLE
+
+deployment_ready_wait_minutes = 15
+
+# dev trade-off: CONTINUE_DEPLOYMENT tu dong shift traffic, khong can bam tay.
+# prod nen dung STOP_DEPLOYMENT.
+deployment_ready_action_on_timeout = "CONTINUE_DEPLOYMENT"

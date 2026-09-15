@@ -120,11 +120,16 @@ module "cicd" {
   alb_listener_test_arn   = module.compute.alb_listener_test_arn
   target_group_blue_name  = module.compute.target_group_blue_name
   target_group_green_name = module.compute.target_group_green_name
+  ecs_execution_role_arn  = module.compute.ecs_execution_role_arn
+  ecs_task_role_arn       = module.compute.ecs_task_role_arn
 
   github_owner            = var.github_owner
   github_repo             = var.github_repo
   github_branch           = var.github_branch
   codestar_connection_arn = var.codestar_connection_arn
+
+  deployment_ready_wait_minutes       = var.deployment_ready_wait_minutes
+  deployment_ready_action_on_timeout  = var.deployment_ready_action_on_timeout
 
   alert_email = var.alert_email
 

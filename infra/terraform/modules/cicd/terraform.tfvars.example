@@ -33,4 +33,5 @@ artifact_bucket_force_destroy = false
 
 codedeploy_deployment_config           = "CodeDeployDefault.ECSAllAtOnce" # dev trade-off, prod nen dung Linear/Canary
 deployment_ready_wait_minutes          = 5
+deployment_ready_action_on_timeout     = "STOP_DEPLOYMENT" # dev co the doi CONTINUE_DEPLOYMENT de tu dong switch traffic
 blue_instance_termination_wait_minutes = 5

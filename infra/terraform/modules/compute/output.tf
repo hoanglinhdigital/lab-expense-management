@@ -51,3 +51,13 @@ output "container_name" {
 output "container_port" {
   value = var.container_port
 }
+
+output "ecs_execution_role_arn" {
+  description = "ARN IAM Role execution cua ECS Task - CodePipeline can iam:PassRole khi RegisterTaskDefinition"
+  value       = aws_iam_role.ecs_execution.arn
+}
+
+output "ecs_task_role_arn" {
+  description = "ARN IAM Role task cua ECS Task - CodePipeline can iam:PassRole khi RegisterTaskDefinition"
+  value       = aws_iam_role.ecs_task.arn
+}

@@ -113,15 +113,24 @@ paths:
   /report/expense-by-category:
     get:
       tags: [report]
-      summary: Chi tiêu gom theo danh mục cha (level 1)
+      summary: Chi tiêu gom theo danh mục cha (level 1), hoặc theo danh mục con nếu truyền parentId
       operationId: getExpenseByCategory
       description: |
-        Dữ liệu cho donut **tỷ trọng chi tiêu**. Luôn gom về **danh mục cha level 1**:
-        chi tiêu của danh mục con được cộng vào danh mục cha, response không bao giờ
-        chứa danh mục có `parentId != null`.
+        Dữ liệu cho donut **tỷ trọng chi tiêu** (màn Home) và cho màn **Expense
+        Analysis** (donut + danh sách theo danh mục, mở từ tab Report).
 
-        Giao dịch không gắn danh mục gom vào một mục `categoryId = null`.
-        Sắp xếp giảm dần theo `amount`.
+        **Không truyền `parentId`** (mặc định): gom về **danh mục cha level 1** —
+        chi tiêu của danh mục con được cộng vào danh mục cha, response không bao giờ
+        chứa danh mục có `parentId != null`. Giao dịch không gắn danh mục gom vào một
+        mục `categoryId = null`.
+
+        **Có truyền `parentId`**: chỉ tính giao dịch thuộc cây danh mục của
+        `parentId` đó, gom theo **danh mục con trực tiếp** (level 2) thay vì theo
+        danh mục cha. Giao dịch gắn thẳng vào `parentId` (không qua danh mục con nào)
+        gom vào một mục `categoryId = parentId`, `name` = tên của chính danh mục cha.
+        Dùng cho màn chi tiết "Chi tiêu Cố định" → Cafe / Ăn trưa / Ăn sáng.
+
+        Cả hai trường hợp đều sắp xếp giảm dần theo `amount`.
 
         **Mặc định kỳ**: từ ngày 1 đến ngày cuối cùng của tháng hiện tại theo `timezone`.
       parameters:
@@ -140,9 +149,21 @@ paths:
             type: string
             enum: [EXPENSE, INCOME]
             default: EXPENSE
+        - name: parentId
+          in: query
+          required: false
+          description: |
+            Id một danh mục **level 1** (danh mục cha, `parentId = null`) của user.
+            Khi truyền, response gom theo danh mục con trực tiếp của danh mục này
+            thay vì theo danh mục cha — dùng cho màn chi tiết Expense Analysis.
+            Truyền id của danh mục không phải level 1, hoặc không thuộc user hiện
+            tại → `404`.
+          schema:
+            type: string
+            example: clx8h2k9p0002qw3f8n1a2b3c
       responses:
         '200':
-          description: Tổng hợp theo danh mục cha.
+          description: Tổng hợp theo danh mục cha, hoặc theo danh mục con của `parentId` nếu có truyền.
           content:
             application/json:
               schema:
