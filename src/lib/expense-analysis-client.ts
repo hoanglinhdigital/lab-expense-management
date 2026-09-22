@@ -42,9 +42,12 @@ interface CategoryBreakdownResponseDto {
 /** Lấy đủ toàn bộ danh mục trong một lần gọi — donut cần hiển thị hết, không phân trang trên UI. */
 const BREAKDOWN_PAGE_SIZE = 100;
 
+export type SortType = "asc" | "desc";
+
 export async function fetchCategoryBreakdown(
   period: AnalysisPeriod,
   parentId?: string,
+  sortType?: SortType,
 ): Promise<CategoryBreakdown> {
   const query = buildQuery({
     dateFrom: period.from.toISOString(),
@@ -52,6 +55,7 @@ export async function fetchCategoryBreakdown(
     flow: "EXPENSE",
     pageSize: BREAKDOWN_PAGE_SIZE,
     parentId,
+    sortType,
   });
   const { data, meta } = await apiFetch<CategoryBreakdownResponseDto>(
     `/report/expense-by-category${query}`,

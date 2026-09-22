@@ -227,6 +227,68 @@ export function run(ctx) {
   r = A.call("GET", "/report/overview?timezone=Invalid/Zone");
   expect("H30", r.status === 400 && r.body?.error?.details?.timezone, JSON.stringify(r.body));
 
+  // --- /report/expense-by-category?sortType ---------------------------------
+  // Dựng thêm một danh mục cha thứ hai ở CUỐI module để không làm lệch các số đối chiếu phía trên.
+
+  r = A.call("POST", "/categories", { name: `Sort test ${stamp}`, type: "EXPENSE" });
+  const sortCat = r.body?.data;
+  expect("H33-setup", r.status === 201, JSON.stringify(r.body));
+  A.call("POST", "/transactions", {
+    type: "EXPENSE",
+    amount: "50000",
+    date: dateNow,
+    fromAccountId: cash.id,
+    categoryId: sortCat.id,
+  });
+
+  const amountsOf = (res) => res.body.data.map((x) => Number(x.amount));
+  const isDesc = (v) => v.every((x, i) => i === 0 || v[i - 1] >= x);
+  const isAsc = (v) => v.every((x, i) => i === 0 || v[i - 1] <= x);
+
+  const sortDefault = A.call("GET", "/report/expense-by-category");
+  expect(
+    "H33 không truyền sortType → giảm dần",
+    sortDefault.status === 200 && sortDefault.body.data.length >= 2 && isDesc(amountsOf(sortDefault)),
+    JSON.stringify(amountsOf(sortDefault)),
+  );
+
+  const sortDesc = A.call("GET", "/report/expense-by-category?sortType=desc");
+  expect(
+    "H34 sortType=desc giống mặc định",
+    sortDesc.status === 200 && JSON.stringify(sortDesc.body.data) === JSON.stringify(sortDefault.body.data),
+    JSON.stringify(amountsOf(sortDesc)),
+  );
+
+  const sortAsc = A.call("GET", "/report/expense-by-category?sortType=asc");
+  expect(
+    "H35 sortType=asc → tăng dần, cùng tập item",
+    sortAsc.status === 200 &&
+      isAsc(amountsOf(sortAsc)) &&
+      JSON.stringify([...amountsOf(sortAsc)].reverse()) === JSON.stringify(amountsOf(sortDesc)),
+    JSON.stringify(amountsOf(sortAsc)),
+  );
+
+  r = A.call("GET", `/report/expense-by-category?sortType=asc&parentId=${sysExpense.id}`);
+  expect("H36 sortType=asc + parentId", r.status === 200 && isAsc(amountsOf(r)), JSON.stringify(r.body));
+
+  r = A.call("GET", "/report/expense-by-category?sortType=asc&pageSize=1");
+  expect(
+    "H37 sortType=asc + pageSize=1 → trang 1 là mục nhỏ nhất",
+    r.status === 200 &&
+      r.body.data.length === 1 &&
+      Number(r.body.data[0].amount) === amountsOf(sortAsc)[0],
+    JSON.stringify(r.body?.data),
+  );
+
+  r = A.call("GET", "/report/expense-by-category?sortType=foo");
+  expect("H38 sortType không hợp lệ → 400", r.status === 400, `${r.status}`);
+
+  expect(
+    "H39 meta.totalAmount không đổi theo chiều sort",
+    sortAsc.body.meta.totalAmount === sortDesc.body.meta.totalAmount,
+    `${sortAsc.body.meta.totalAmount} vs ${sortDesc.body.meta.totalAmount}`,
+  );
+
   // --- Bảo vệ: mọi API ngoài auth đều phải chặn khách chưa đăng nhập --------
 
   const guarded = [

@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "graphify": {
+      "command": "C:\\Users\\admin\\AppData\\Roaming\\uv\\tools\\graphifyy\\Scripts\\python.exe",
+      "args": ["-m", "graphify.serve", "graphify-out/graph.json"]
+    },
+    "mysql-expense": {
+      "command": "uvx",
+      "args": ["--from", "mysql-mcp-server", "mysql_mcp_server"],
+      "env": {
+        "MYSQL_HOST": "127.0.0.1",
+        "MYSQL_PORT": "3306",
+        "MYSQL_USER": "expense_readonly",
+        "MYSQL_PASSWORD": "123456789",
+        "MYSQL_DATABASE": "expense_db"
+      }
+    }
+  }
+}
