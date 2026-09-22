@@ -9,9 +9,10 @@ import CategoryDonutChart from "./CategoryDonutChart";
 import ExpenseAnalysisSkeleton from "./ExpenseAnalysisSkeleton";
 import PeriodRangeLabel from "./PeriodRangeLabel";
 import PeriodTypeTabs from "./PeriodTypeTabs";
+import SortToggleButton from "./SortToggleButton";
 import { ApiClientError, isUnauthorized } from "@/lib/api/client";
 import { fetchCategoryBreakdown } from "@/lib/expense-analysis-client";
-import type { CategoryBreakdown } from "@/lib/expense-analysis-client";
+import type { CategoryBreakdown, SortType } from "@/lib/expense-analysis-client";
 import {
   defaultPeriodFor,
   periodFromSearchParams,
@@ -31,7 +32,8 @@ export default function ExpenseAnalysisScreen() {
   const [error, setError] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
   const [loadedKey, setLoadedKey] = useState<string | null>(null);
-  const fetchKey = `${searchKey}::${reloadToken}`;
+  const [sortType, setSortType] = useState<SortType>("desc");
+  const fetchKey = `${searchKey}::${reloadToken}::${sortType}`;
   const isLoading = loadedKey !== fetchKey;
 
   // Nhớ khoảng đã chọn của từng tab Day/Month/Year trong phiên xem này — đổi tab
@@ -45,7 +47,7 @@ export default function ExpenseAnalysisScreen() {
   useEffect(() => {
     let cancelled = false;
     const currentPeriod = periodFromSearchParams(new URLSearchParams(searchKey));
-    fetchCategoryBreakdown(currentPeriod).then(
+    fetchCategoryBreakdown(currentPeriod, undefined, sortType).then(
       (result) => {
         if (cancelled) return;
         setBreakdown(result);
@@ -65,7 +67,7 @@ export default function ExpenseAnalysisScreen() {
     return () => {
       cancelled = true;
     };
-  }, [fetchKey, searchKey, router]);
+  }, [fetchKey, searchKey, sortType, router]);
 
   function retry() {
     setError(null);
@@ -126,7 +128,13 @@ export default function ExpenseAnalysisScreen() {
             <div className="rounded-2xl bg-white p-4 shadow-sm">
               <CategoryDonutChart items={breakdown.items} currency={breakdown.currency} />
             </div>
-            <div className="mt-4">
+            <div className="mt-4 flex justify-end">
+              <SortToggleButton
+                value={sortType}
+                onToggle={() => setSortType((prev) => (prev === "desc" ? "asc" : "desc"))}
+              />
+            </div>
+            <div className="mt-2">
               <CategoryBreakdownList
                 items={breakdown.items}
                 currency={breakdown.currency}

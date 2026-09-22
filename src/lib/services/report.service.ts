@@ -333,7 +333,11 @@ export async function getExpenseByCategory(
         _amount: entry.amount,
       };
     })
-    .sort((a, b) => b._amount.comparedTo(a._amount));
+    .sort((a, b) =>
+      query.sortType === "asc"
+        ? a._amount.comparedTo(b._amount)
+        : b._amount.comparedTo(a._amount),
+    );
 
   const { skip, take } = toSkipTake(query);
 

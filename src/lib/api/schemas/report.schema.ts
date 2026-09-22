@@ -38,6 +38,7 @@ export const expenseByCategoryQuerySchema = withDateOrder(
     ...accountFilter,
     flow: z.enum(["EXPENSE", "INCOME"]).default("EXPENSE"),
     parentId: z.string().trim().min(1).optional(),
+    sortType: z.enum(["asc", "desc"]).default("desc"),
   }),
 );
 

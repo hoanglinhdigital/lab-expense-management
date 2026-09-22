@@ -130,7 +130,8 @@ paths:
         gom vào một mục `categoryId = parentId`, `name` = tên của chính danh mục cha.
         Dùng cho màn chi tiết "Chi tiêu Cố định" → Cafe / Ăn trưa / Ăn sáng.
 
-        Cả hai trường hợp đều sắp xếp giảm dần theo `amount`.
+        Mặc định sắp xếp giảm dần theo `amount`; truyền `sortType` để đổi chiều sắp xếp
+        (áp dụng cho cả hai trường hợp trên, và được áp dụng **trước** khi phân trang).
 
         **Mặc định kỳ**: từ ngày 1 đến ngày cuối cùng của tháng hiện tại theo `timezone`.
       parameters:
@@ -149,6 +150,16 @@ paths:
             type: string
             enum: [EXPENSE, INCOME]
             default: EXPENSE
+        - name: sortType
+          in: query
+          required: false
+          description: |
+            Chiều sắp xếp theo `amount`: `asc` (tăng dần) hoặc `desc` (giảm dần).
+            Không truyền = `desc` (giữ hành vi cũ). Giá trị khác → `400 VALIDATION_ERROR`.
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
         - name: parentId
           in: query
           required: false
