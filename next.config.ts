@@ -5,7 +5,10 @@ const nextConfig: NextConfig = {
   // Server Components / Route Handlers, để `require` native trên Vercel.
   serverExternalPackages: ["@prisma/adapter-mariadb", "mariadb"],
   // Output file tracing tối thiểu cho Docker image (xem Dockerfile ở root).
-  output: "standalone",
+  // Chỉ bật khi KHÔNG build trên Vercel: Vercel tự làm output file tracing
+  // riêng và không tương thích với "standalone" (gây lỗi ENOENT
+  // next-server.js.nft.json ở bước onBuildComplete). Vercel tự set VERCEL=1.
+  ...(process.env.VERCEL ? {} : { output: "standalone" as const }),
 };
 
 export default nextConfig;
