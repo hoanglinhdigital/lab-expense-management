@@ -2,7 +2,13 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash|Grep",
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/guard-dangerous-commands.ps1" }
+        ]
+      },
+      {
+        "matcher": "Grep",
         "hooks": [
           {
             "type": "command",
@@ -22,5 +28,6 @@
         ]
       }
     ]
+
   }
 }
