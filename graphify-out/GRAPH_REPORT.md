@@ -1,17 +1,17 @@
-# Graph Report - lab-expense-management  (2026-09-21)
+# Graph Report - lab-expense-management  (2026-09-27)
 
 ## Corpus Check
-- 521 files · ~703,085 words
+- 524 files · ~704,334 words
 - Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 27 file(s) not represented in the graph (top: (none) 10, .example 8, .bkp 2)
+- Unclassified: 28 file(s) not represented in the graph (top: (none) 11, .example 8, .bkp 2)
 
 ## Summary
-- 3917 nodes · 6276 edges · 262 communities (239 shown, 23 thin omitted)
+- 3937 nodes · 6293 edges · 271 communities (248 shown, 23 thin omitted)
 - Extraction: 94% EXTRACTED · 6% INFERRED · 0% AMBIGUOUS · INFERRED: 351 edges (avg confidence: 0.94)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `ce5b829f`
+- Built from commit: `4f4180a1`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -25,48 +25,48 @@
 - generated_prisma_enums
 - generated_prisma_enums_categoryscope
 - package.json
-- validation.ts
+- report.schema.ts
 - transaction.service.ts
-- lucide-react
-- period.ts
+- LoginForm.tsx
+- HistoryPeriodScreen.tsx
 - lib_domain_money_ratemap
 - auth.service.ts
+- react
 - record-client.ts
-- Sửa file
 - RecordScreen.tsx
-- CategoryFormPanel.tsx
+- lucide-react
 - category.service.ts
 - expense-analysis-client.ts
 - contact.service.ts
-- home-types.ts
+- HomeHeader.tsx
 - Driver Adapters
 - Driver Adapters
 - What You Must Do When Invoked
 - seed.ts
-- react
-- ExpenseAnalysisScreen.tsx
-- next
+- format.ts
+- ExpenseAnalysisDetailScreen.tsx
+- app/layout.tsx
 - Upgrade to Prisma ORM 7
 - Upgrade to Prisma ORM 7
-- formatCurrency
+- period.ts
 - Plan: Tái cấu trúc frontend — Navigation shell mobile-first
 - Relation Queries
 - Removed Features
 - ExchangeRate
 - expense-analysis-types.ts
-- ExpenseAnalysisCard.tsx
+- home-types.ts
 - Relation Queries
 - generated_prisma_enums_transactiontype
 - Removed Features
-- ScreenPlaceholder
-- FlowSummaryCard.tsx
+- Plan: Màn hình Account (danh sách tài khoản) — frontend
+- formatCurrency
 - generated_prisma_client
 - app_globals
 - Prisma CLI Reference
 - Raw Queries
 - Troubleshooting Prisma Compute
 - RecordExpensePage
-- history-client.ts
+- RecordType
 - RangeCalendarModal
 - Prisma CLI Reference
 - Raw Queries
@@ -89,13 +89,13 @@
 - prisma studio
 - Prisma Config
 - prisma migrate dev
-- SettingScreen
+- Plan: Màn hình Setting (Other) — frontend
 - SettingScreen.tsx
 - compilerOptions
 - prisma migrate dev
 - prisma db seed
 - Environment Variables
-- HomeScreen
+- 2. Quyết định thiết kế
 - prisma db seed
 - Environment Variables
 - prisma db pull
@@ -106,7 +106,7 @@
 - Prisma Accelerate Users
 - ESM and CommonJS Support
 - Plan Backend 07 — Report
-- FormAlert
+- DayCalendarModal
 - prisma db pull
 - prisma init
 - prisma migrate deploy
@@ -122,7 +122,7 @@
 - Transactions
 - Workflow
 - Plan Backend 05 — Transaction
-- TransactionDetailScreen.tsx
+- report.md
 - Model Queries
 - Transactions
 - Workflow
@@ -131,7 +131,7 @@
 - Prisma SQL Driver Adapter Implementation
 - Core Workflows
 - Prisma Compute Framework Readiness
-- Plan: Màn hình Home (dashboard) — frontend
+- FormAlert
 - Prisma Compute Framework Readiness
 - MongoDB Setup
 - Prisma SQL Driver Adapter Implementation
@@ -143,7 +143,7 @@
 - Prisma Platform CLI App Deploy
 - devDependencies
 - Plan Backend 02 — Account
-- formatDate
+- LoanRow.tsx
 - prisma db execute
 - Prisma Client API Reference
 - Prisma Platform CLI App Deploy
@@ -159,7 +159,7 @@
 - Plan Backend 03 — Category
 - Plan Backend 04 — Contact
 - Plan Backend — Expense Analysis (tab Report)
-- Kết nối frontend với API thật (thay dữ liệu giả)
+- next
 - prisma migrate diff
 - prisma migrate reset
 - PostgreSQL Setup
@@ -205,7 +205,7 @@
 - Prisma Compute
 - dependencies
 - MonthRangeModal.tsx
-- SettingMenuList.tsx
+- ReportScreen.tsx
 - history-types.ts
 - prisma migrate status
 - Prisma Compute Config
@@ -231,7 +231,7 @@
 - Terraform AWS Generator
 - Read Operations
 - review-guidelines.md
-- Fix: Session cookie `Secure` khiến login không redirect trên ALB HTTP (dev)
+- CategoryBreakdownEntry
 - Test case: Tạo khoản chi tiêu (Create Expense)
 - dotenv
 - Test API
@@ -241,7 +241,7 @@
 - client-api-mapping
 - verify-cutover-checklist
 - Prisma 7 Client Instantiation
-- API design rules — lab-expense-management
+- ExpenseAnalysisScreen.tsx
 - graphify reference: query, path, explain
 - Update Operations
 - Quick Examples
@@ -253,7 +253,7 @@
 - Playwright E2E Generator
 - Testscript Generator
 - README.md
-- LogoutConfirmDialog.tsx
+- Plan — Thiết kế lại Entity model (multi-user)
 - Bug Report Writer
 - graphify reference: add a URL and watch a folder
 - graphify reference: commit hook and native CLAUDE.md integration
@@ -265,8 +265,8 @@
 - graphify reference: GitHub clone and cross-repo merge
 - graphify reference: transcribe video and audio
 - prisma complete
-- graphify
-- PeriodOptionRow.tsx
+- mysql-expense
+- ScreenPlaceholder
 - prisma complete
 - AGENTS.md
 - extraction-spec.md
@@ -276,6 +276,12 @@
 - generated_prisma_client_prismaclient
 - generated_prisma_enums_accounttype
 - generated_prisma_enums_categorytype
+- startOfDay
+- ExpenseAnalysisScreen
+- 2. Quyết định thiết kế
+- 2. Quyết định thiết kế (đã chốt với user)
+- 8. Hạng mục thực hiện
+- 8. Hạng mục thực hiện
 
 ## God Nodes (most connected - your core abstractions)
 1. `lucide-react` - 53 edges
@@ -290,21 +296,21 @@
 10. `withAuth()` - 26 edges
 
 ## Surprising Connections (you probably didn't know these)
+- `Edge cases` --references--> `FormAlert()`  [INFERRED]
+  plans/frontend/auth.md → src/app/components/FormAlert.tsx
+- `Trạng thái màn hình` --references--> `FormAlert()`  [INFERRED]
+  plans/frontend/auth.md → src/app/components/FormAlert.tsx
 - `3.4 Ba trạng thái` --references--> `FormAlert()`  [INFERRED]
   plans/frontend/record.md → src/app/components/FormAlert.tsx
 - `1. Phạm vi` --references--> `ScreenPlaceholder()`  [INFERRED]
-  plans/frontend/home.md → src/app/components/ScreenPlaceholder.tsx
-- `Sửa file` --references--> `ScreenPlaceholder()`  [INFERRED]
-  plans/frontend/record.md → src/app/components/ScreenPlaceholder.tsx
-- `1. Phạm vi` --references--> `ScreenPlaceholder()`  [INFERRED]
   plans/frontend/report.md → src/app/components/ScreenPlaceholder.tsx
-- `Verify` --references--> `AccountFormPanel()`  [INFERRED]
-  plans/frontend/ket_noi_api_that.md → src/app/components/account/AccountFormPanel.tsx
+- `1. Phạm vi` --references--> `ScreenPlaceholder()`  [INFERRED]
+  plans/frontend/setting.md → src/app/components/ScreenPlaceholder.tsx
 
 ## Import Cycles
 - None detected.
 
-## Communities (262 total, 23 thin omitted)
+## Communities (271 total, 23 thin omitted)
 
 ### Community 0 - "testscript.js"
 Cohesion: 0.06
@@ -312,79 +318,79 @@ Nodes (85): 1. Đọc spec và bảng test case, 2. Bổ sung test case vào đ�
 
 ### Community 1 - "report.service.ts"
 Cohesion: 0.09
-Nodes (60): Thêm file, 7. Checklist, src_generated_prisma_client_prisma, currencyNotSupported(), buildMeta(), PaginationMeta, assertValidTimezone(), endOfDay() (+52 more)
+Nodes (61): 5. Hạng mục, Sửa file, Thêm file, Xóa file, 7. Checklist, src_generated_prisma_client_prisma, currencyNotSupported(), buildMeta() (+53 more)
 
 ### Community 2 - "FlowDetailScreen.tsx"
-Cohesion: 0.06
-Nodes (38): Bối cảnh, Logic xử lý & edge case, 1. Phạm vi, 4. Component, 5. Logic & xử lý lỗi, 6. Ba trạng thái màn hình, 7. Test case cần kiểm bằng tay, 1. Phạm vi (+30 more)
+Cohesion: 0.13
+Nodes (18): Bối cảnh, FlowDetailScreen(), FlowPeriodRow(), FlowPeriodRowProps, FlowPeriodTabs(), FlowPeriodTabsProps, fetchFlowDetail(), fetchReportOverview() (+10 more)
 
 ### Community 3 - "ok"
-Cohesion: 0.11
-Nodes (38): GET, Params, GET, POST, GET, POST, POST, POST (+30 more)
+Cohesion: 0.09
+Nodes (47): Thêm file, GET, Params, DELETE, GET, Params, PATCH, GET (+39 more)
 
 ### Community 4 - "AccountFormPanel.tsx"
-Cohesion: 0.07
-Nodes (40): 6. Ba trạng thái màn hình, AccountFormPanel(), submit(), validate(), AccountFormPanelProps, Sheet, AccountGroupCard(), AccountGroupCardProps (+32 more)
+Cohesion: 0.10
+Nodes (32): AccountFormPanel(), submit(), validate(), AccountFormPanelProps, Sheet, AccountGroupCard(), AccountGroupCardProps, AccountHeader() (+24 more)
 
 ### Community 5 - "account.service.ts"
-Cohesion: 0.08
-Nodes (45): DELETE, GET, Params, PATCH, src_generated_prisma_enums_accounttype, ACCOUNT_TYPE_LABELS, ACCOUNT_TYPE_ORDER, REPORT_PERIOD_IDS (+37 more)
+Cohesion: 0.10
+Nodes (37): BUG-01 (Critical) — số dư không bị trừ ở TC01 / TC05, GET, POST, src_generated_prisma_enums_accounttype, ACCOUNT_TYPE_LABELS, ACCOUNT_TYPE_ORDER, DEFAULT_TIMEZONE, REPORT_PERIOD_IDS (+29 more)
 
 ### Community 8 - "package.json"
-Cohesion: 0.12
-Nodes (16): eslintConfig, name, private, version, bcryptjs, eslint, eslint-config-next, @prisma/client (+8 more)
+Cohesion: 0.11
+Nodes (17): eslintConfig, name, private, version, bcryptjs, eslint, eslint-config-next, prettier (+9 more)
 
-### Community 9 - "validation.ts"
-Cohesion: 0.06
-Nodes (47): zod, DEFAULT_TIMEZONE, paginationSchema(), ACCOUNT_TYPES, accountBalanceQuerySchema, accountSummaryQuerySchema, descriptionSchema, iconSchema (+39 more)
+### Community 9 - "report.schema.ts"
+Cohesion: 0.05
+Nodes (48): zod, PaginationMeta, paginationSchema(), ACCOUNT_TYPES, accountBalanceQuerySchema, accountSummaryQuerySchema, CreateAccountInput, createAccountSchema (+40 more)
 
 ### Community 10 - "transaction.service.ts"
-Cohesion: 0.10
-Nodes (40): 3. Nội dung bắt buộc của mỗi spec, Thêm file, BUG-01 (Critical) — số dư không bị trừ ở TC01 / TC05, BUG-02 (High) — `date` sai định dạng vẫn được chấp nhận, BUG-03 (Medium) — `amount` là JSON number không bị từ chối, BUG-04 (Medium) — id tham chiếu sai trả 404 thay vì 400, Cập nhật API spec (`docs/api-spec/transaction.yaml`), Phân tích nguyên nhân (+32 more)
+Cohesion: 0.07
+Nodes (48): 1. Chuẩn tài liệu, 2. Danh sách cụm chức năng cố định, 3. Nội dung bắt buộc của mỗi spec, 4. Quy ước dữ liệu, 5. Quy trình, API design rules — lab-expense-management, BUG-02 (High) — `date` sai định dạng vẫn được chấp nhận, BUG-03 (Medium) — `amount` là JSON number không bị từ chối (+40 more)
 
-### Community 11 - "lucide-react"
-Cohesion: 0.12
-Nodes (29): Components / props / state, Data flow, Thêm file, lucide-react, AuthBrandHeader(), AuthSubmitButton(), AuthSubmitButtonProps, AuthTextField() (+21 more)
+### Community 11 - "LoginForm.tsx"
+Cohesion: 0.07
+Nodes (41): Components / props / state, Cấu trúc route, Data flow, Edge cases, Plan — Màn hình Auth (Login / Register), Quyết định đã chốt với user, Responsive & a11y, Sửa file (+33 more)
 
-### Community 12 - "period.ts"
-Cohesion: 0.12
-Nodes (37): 2. Điều hướng & state kỳ báo cáo (theo tiền lệ History), DayCalendarModalProps, MONTH_SHORT_NAMES, WEEKDAY_HEADERS, DayModalContext, HistoryPeriodScreen(), apply(), QUARTER_LABELS (+29 more)
+### Community 12 - "HistoryPeriodScreen.tsx"
+Cohesion: 0.21
+Nodes (16): 2. Điều hướng & state kỳ báo cáo (theo tiền lệ History), DayModalContext, HistoryPeriodScreen(), apply(), QUARTER_LABELS, PeriodOptionRow(), PeriodOptionRowProps, rangeFromSearchParams() (+8 more)
 
 ### Community 14 - "auth.service.ts"
+Cohesion: 0.07
+Nodes (42): Thêm file, Bối cảnh / root cause, Fix: Session cookie `Secure` khiến login không redirect trên ALB HTTP (dev), Ghi chú, Sửa file, Thêm file, Xoá file, Đã kiểm chứng (+34 more)
+
+### Community 15 - "react"
+Cohesion: 0.06
+Nodes (45): 3.1 Type (`src/lib/home-types.ts`), 3.2 Luồng, 3.3 Logic hiển thị, 3.4 Ba trạng thái, 3. Cấu trúc dữ liệu & luồng, 2.3 Hành vi chưa được mockup mô tả, 4.4 Dữ liệu, react (+37 more)
+
+### Community 16 - "record-client.ts"
 Cohesion: 0.09
-Nodes (36): Thêm file, Sửa file, ref_node_crypto, POST, GET, PATCH, DELETE, noContent() (+28 more)
-
-### Community 15 - "record-client.ts"
-Cohesion: 0.08
-Nodes (37): Không sửa / không xoá, Plan: Màn hình Transaction History (Lịch sử giao dịch), Route mới, Sửa file, Test case cần kiểm tra thủ công sau khi code, Thêm file, 4.4 Dữ liệu, ContactCreateDialogProps (+29 more)
-
-### Community 16 - "Sửa file"
-Cohesion: 0.11
-Nodes (37): Sửa file, AccountScreen(), handleCreate(), reload(), TransactionDetailScreen(), handleCreateCategory(), handleCreateContact(), handleDelete() (+29 more)
+Nodes (42): Sửa file, Sửa file, Thêm file, 5. Test case cần kiểm, DeleteTransactionDialog(), TransactionDetailScreen(), handleCreateCategory(), handleCreateContact() (+34 more)
 
 ### Community 17 - "RecordScreen.tsx"
-Cohesion: 0.14
-Nodes (28): Kiến trúc tái sử dụng, Thêm file, AccountRow(), AdjustmentForm(), AmountField(), AmountFieldProps, BorrowLendForm(), CategoryPickerCard() (+20 more)
+Cohesion: 0.10
+Nodes (37): Kiến trúc tái sử dụng, Thêm file, Overlay, Status, AccountRow(), AccountRowProps, AccountSheet(), AccountSheetProps (+29 more)
 
-### Community 18 - "CategoryFormPanel.tsx"
-Cohesion: 0.09
-Nodes (28): Checklist, Hạng mục, Mục tiêu, Plan — Thiết kế lại Entity model (multi-user), Quyết định thiết kế, Sửa file, Thêm file, Xóa file (+20 more)
+### Community 18 - "lucide-react"
+Cohesion: 0.11
+Nodes (24): 2.5 Điều hướng & responsive, lucide-react, BottomSheet(), BottomSheetProps, FullScreenPanel(), FullScreenPanelProps, CategoryFormPanelProps, SubPanel (+16 more)
 
 ### Community 19 - "category.service.ts"
-Cohesion: 0.12
-Nodes (32): DELETE, GET, Params, PATCH, GET, src_generated_prisma_enums, src_generated_prisma_enums_categoryscope, src_generated_prisma_enums_categorytype (+24 more)
+Cohesion: 0.11
+Nodes (34): DELETE, GET, Params, PATCH, GET, POST, src_generated_prisma_enums, src_generated_prisma_enums_categoryscope (+26 more)
 
 ### Community 20 - "expense-analysis-client.ts"
-Cohesion: 0.11
-Nodes (28): 4.1 Component, CategoryBreakdownList(), CategoryBreakdownListProps, CategoryBreakdownRow(), CategoryBreakdownRowProps, RowBody(), CategoryChildAccordion(), toggle() (+20 more)
+Cohesion: 0.15
+Nodes (19): CategoryChildAccordion(), toggle(), CategoryChildAccordionProps, CategoryChildRow(), CategoryChildRowProps, CategoryTransactionRow(), CategoryTransactionRowProps, PeriodRangeLabelProps (+11 more)
 
 ### Community 21 - "contact.service.ts"
 Cohesion: 0.11
-Nodes (31): DELETE, GET, Params, PATCH, contactNotFound(), CreateContactInput, createContactSchema, emailSchema (+23 more)
+Nodes (30): GET, POST, contactNotFound(), CreateContactInput, createContactSchema, emailSchema, ListContactsQuery, listContactsQuerySchema (+22 more)
 
-### Community 22 - "home-types.ts"
-Cohesion: 0.11
-Nodes (23): 2.1 Bảng màu, 3.4 Ba trạng thái, BalanceCard(), BalanceCardProps, ExchangeRateCard(), ExchangeRateRow(), ExchangeRateRowProps, FlowSummaryCard() (+15 more)
+### Community 22 - "HomeHeader.tsx"
+Cohesion: 0.33
+Nodes (8): 2.1 Bảng màu, BalanceCard(), BalanceCardProps, HomeHeader(), HomeHeaderProps, initial(), BalanceSummary, UserSummary
 
 ### Community 23 - "Driver Adapters"
 Cohesion: 0.07
@@ -402,17 +408,17 @@ Nodes (26): For /graphify add and --watch, For /graphify query, For the commit h
 Cohesion: 0.15
 Nodes (16): adapter, CURRENCIES, main(), prisma, seedCurrencies(), seedExchangeRates(), seedSystemCategories(), syncAccountBalances() (+8 more)
 
-### Community 27 - "react"
-Cohesion: 0.20
-Nodes (9): react, HistoryHeader(), HistoryHeaderProps, HistoryScreen(), loadMore(), HistorySkeleton(), PeriodSelectorButton(), PeriodSelectorButtonProps (+1 more)
+### Community 27 - "format.ts"
+Cohesion: 0.08
+Nodes (32): HistoryHeader(), HistoryHeaderProps, HistoryScreen(), loadMore(), HistorySkeleton(), PeriodSelectorButton(), PeriodSelectorButtonProps, TransactionGroupList() (+24 more)
 
-### Community 28 - "ExpenseAnalysisScreen.tsx"
-Cohesion: 0.13
-Nodes (17): 5.1 Component, 5.2 Hành vi accordion, 5.3 Dữ liệu giao dịch trong accordion, 5.4 Ba trạng thái, 5. Màn chi tiết `/report/expense-analysis/[categoryId]`, ExpenseAnalysisDetailSkeleton(), ExpenseAnalysisSkeleton(), PeriodTypeTabs() (+9 more)
+### Community 28 - "ExpenseAnalysisDetailScreen.tsx"
+Cohesion: 0.16
+Nodes (15): 5.1 Component, 5.2 Hành vi accordion, 5.3 Dữ liệu giao dịch trong accordion, 5.4 Ba trạng thái, 5. Màn chi tiết `/report/expense-analysis/[categoryId]`, ExpenseAnalysisDetailScreen(), applyPeriod(), changeGranularity() (+7 more)
 
-### Community 29 - "next"
-Cohesion: 0.11
-Nodes (11): nextConfig, next, metadata, metadata, AuthCard(), AuthCardProps, src_app_globals, geistMono (+3 more)
+### Community 29 - "app/layout.tsx"
+Cohesion: 0.33
+Nodes (4): src_app_globals, geistMono, geistSans, metadata
 
 ### Community 30 - "Upgrade to Prisma ORM 7"
 Cohesion: 0.08
@@ -422,13 +428,13 @@ Nodes (25): 1. Update package.json for ESM-first projects, 2. Update tsconfig.js
 Cohesion: 0.08
 Nodes (25): 1. Update package.json for ESM-first projects, 2. Update tsconfig.json, 3. Update schema.prisma, 4. Create prisma.config.ts, 5. Install a driver adapter (SQL providers only), 6. Update client instantiation, 7. Replace Prisma.validator with satisfies, 8. Run migrations and generate (+17 more)
 
-### Community 32 - "formatCurrency"
-Cohesion: 0.12
-Nodes (19): 2.5 Điều hướng & responsive, BottomSheet(), BottomSheetProps, TransactionGroupList(), TransactionGroupListProps, TransactionRow(), TransactionRowProps, AccountRowProps (+11 more)
+### Community 32 - "period.ts"
+Cohesion: 0.20
+Nodes (15): MONTH_SHORT_NAMES, RangeCalendarModalProps, WEEKDAY_HEADERS, buildCalendarGrid(), CalendarCell, endOfWeek(), formatDayLabel(), lastWeekRange() (+7 more)
 
 ### Community 33 - "Plan: Tái cấu trúc frontend — Navigation shell mobile-first"
-Cohesion: 0.11
-Nodes (19): 1. Mục tiêu, 2.1 Cấu trúc route, 2.2 Màu sắc & kích thước (theo skill `frontend-coding`), 2.3 Tránh lặp code, 2.4 Xử lý code cũ, 2. Quyết định thiết kế, 3. Hạng mục công việc, 4. Edge case & lưu ý (+11 more)
+Cohesion: 0.09
+Nodes (24): 1. Mục tiêu, 2.1 Cấu trúc route, 2.2 Màu sắc & kích thước (theo skill `frontend-coding`), 2.3 Tránh lặp code, 2.4 Xử lý code cũ, 2. Quyết định thiết kế, 3. Hạng mục công việc, 4. Edge case & lưu ý (+16 more)
 
 ### Community 34 - "Relation Queries"
 Cohesion: 0.08
@@ -443,12 +449,12 @@ Cohesion: 0.10
 Nodes (22): 1. Bối cảnh & quyết định đã chốt, 2. Lệch giữa spec và `schema.prisma` hiện tại — cần bổ sung, 3. Điểm nghiệp vụ cần thống nhất, 4. Cấu trúc thư mục code, 5. Hạng mục, 6. Test case, 7. Checklist, Plan Backend 00 — Nền tảng (schema, dependency, lớp dùng chung) (+14 more)
 
 ### Community 37 - "expense-analysis-types.ts"
-Cohesion: 0.20
-Nodes (20): 1. Thiết kế, 3.3 Hàm thuần dùng chung, Sửa file, ExpenseAnalysisDetailScreen(), applyPeriod(), changeGranularity(), ExpenseAnalysisScreen(), applyPeriod() (+12 more)
+Cohesion: 0.53
+Nodes (8): PeriodRangeLabel(), dayPeriod(), defaultPeriod(), defaultPeriodFor(), isSameCalendarDay(), monthPeriod(), periodFromSearchParams(), yearPeriod()
 
-### Community 38 - "ExpenseAnalysisCard.tsx"
-Cohesion: 0.13
-Nodes (20): 8. Chênh lệch so với plan khi code, 4.2 Donut chart — không thêm thư viện, 4.3 Màu từng lát cắt — dữ liệu, không phải màu giao diện mới, 4.5 Ba trạng thái, 4. Màn chính `/report/expense-analysis`, ExpenseAnalysisCard(), ExpenseAnalysisCardProps, monthYear() (+12 more)
+### Community 38 - "home-types.ts"
+Cohesion: 0.16
+Nodes (18): ExpenseAnalysisCard(), ExpenseAnalysisCardProps, monthYear(), rangeLabel(), axisStep(), monthLabel(), MonthlyExpenseChart(), MonthlyExpenseChartProps (+10 more)
 
 ### Community 39 - "Relation Queries"
 Cohesion: 0.08
@@ -458,13 +464,13 @@ Nodes (23): Connect existing, Count Relations, Create or connect, Create with re
 Cohesion: 0.08
 Nodes (23): Alternatives, Auto-generate after migrate, Auto-seed after migrate, Automatic Behaviors Removed, CLI Flags Removed, Client Middleware, Common Middleware Patterns, Custom counter with extensions (+15 more)
 
-### Community 42 - "ScreenPlaceholder"
-Cohesion: 0.09
-Nodes (21): 1. Phạm vi, 3.1 `src/lib/account-types.ts`, 3.2 `src/lib/account-client.ts`, 3. Cấu trúc dữ liệu, 4. Component, 5. Validation & xử lý lỗi (Add Account), 7. Test case cần kiểm bằng tay, 8. Hạng mục thực hiện (+13 more)
+### Community 42 - "Plan: Màn hình Account (danh sách tài khoản) — frontend"
+Cohesion: 0.18
+Nodes (9): 3.1 `src/lib/account-types.ts`, 3.2 `src/lib/account-client.ts`, 3. Cấu trúc dữ liệu, 4. Component, 5. Validation & xử lý lỗi (Add Account), 6. Ba trạng thái màn hình, 7. Test case cần kiểm bằng tay, Plan: Màn hình Account (danh sách tài khoản) — frontend (+1 more)
 
-### Community 43 - "FlowSummaryCard.tsx"
-Cohesion: 0.14
-Nodes (19): 3.1 `src/lib/report-types.ts`, 3.2 `src/lib/report-client.ts`, 3. Cấu trúc dữ liệu, CategoryDonut(), CategoryDonutProps, FlowRow(), FlowRowProps, FlowSummaryCardProps (+11 more)
+### Community 43 - "formatCurrency"
+Cohesion: 0.13
+Nodes (23): 2.5 Tái sử dụng, CategoryDonut(), CategoryDonutProps, FlowRow(), FlowRowProps, FlowSummaryCardProps, heightPercent(), IncomeExpenseBars() (+15 more)
 
 ### Community 46 - "Prisma CLI Reference"
 Cohesion: 0.09
@@ -482,13 +488,13 @@ Nodes (22): Accidental Prisma Postgres Provisioning, Auth Fails, Bun Entrypoint 
 Cohesion: 0.11
 Nodes (5): e2e_test_fixtures_auth_expect, test, RecordExpensePage, saveAndCaptureId(), @playwright/test
 
-### Community 50 - "history-client.ts"
-Cohesion: 0.13
-Nodes (17): Thêm file, RecordHeaderProps, TransactionTypeMenu(), TransactionTypeMenuProps, toDateTime(), AccountRefDto, CategoryRefDto, ContactRefDto (+9 more)
+### Community 50 - "RecordType"
+Cohesion: 0.29
+Nodes (7): Thêm file, RecordHeaderProps, TransactionTypeMenu(), TransactionTypeMenuProps, TransactionDto, RECORD_TYPES, RecordType
 
 ### Community 51 - "RangeCalendarModal"
-Cohesion: 0.11
-Nodes (14): 3.1 Hàng tab + nhãn, 3.2 Tái sử dụng thay vì viết mới, 3.4 Quy tắc khi đổi tab, 3. Bộ chọn kỳ (Day / Month / Year), 7. Responsive & chi tiết UI, 8. Test case cần kiểm bằng tay, 9. Hạng mục thực hiện, Plan Frontend — Màn "Expense Analysis" (tab Report) (+6 more)
+Cohesion: 0.16
+Nodes (12): 3.1 Hàng tab + nhãn, 3.2 Tái sử dụng thay vì viết mới, 3. Bộ chọn kỳ (Day / Month / Year), 7. Responsive & chi tiết UI, 8. Test case cần kiểm bằng tay, 9. Hạng mục thực hiện, Plan Frontend — Màn "Expense Analysis" (tab Report), Thêm file (+4 more)
 
 ### Community 52 - "Prisma CLI Reference"
 Cohesion: 0.09
@@ -515,8 +521,8 @@ Cohesion: 0.10
 Nodes (20): cursor, distinct, Filtered include, include, Include relation count, Multiple distinct fields, Negative take (reverse), Nested include (+12 more)
 
 ### Community 58 - "Plan: Màn hình Record (nhập giao dịch) — frontend"
-Cohesion: 0.10
-Nodes (20): 1. Phạm vi, 2.1 Bảng màu, 2.2 Adjustment, 2.3 Nguồn dữ liệu, 2.4 Điều hướng luồng phụ, 2.5 Responsive, 2. Quyết định thiết kế (đã chốt với user), 3.1 Type (`src/lib/record-types.ts`) (+12 more)
+Cohesion: 0.18
+Nodes (10): 1. Phạm vi, 3.1 Type (`src/lib/record-types.ts`), 3.2 Form theo từng loại, 3.3 Validation, 3.4 Ba trạng thái, 3. Cấu trúc dữ liệu & luồng, 6. Vấn đề tồn đọng (ngoài phạm vi plan này), 7. Checklist (+2 more)
 
 ### Community 59 - "Client Methods"
 Cohesion: 0.10
@@ -574,13 +580,13 @@ Nodes (19): After (v7) - prisma.config.ts, Basic Configuration, Before (v6) - sc
 Cohesion: 0.11
 Nodes (18): After schema changes, Command, Common Patterns, Create and apply migration, Create without applying, Examples, Follow-up Commands, Full workflow (+10 more)
 
-### Community 73 - "SettingScreen"
-Cohesion: 0.13
-Nodes (15): 3.1 `src/lib/setting-types.ts`, 3.2 `src/lib/setting-client.ts`, 3. Cấu trúc dữ liệu, 4. Component, 5. Logic & xử lý lỗi, 7. Test case cần kiểm bằng tay, 8. Hạng mục thực hiện, Plan: Màn hình Setting (Other) — frontend (+7 more)
+### Community 73 - "Plan: Màn hình Setting (Other) — frontend"
+Cohesion: 0.18
+Nodes (9): 1. Phạm vi, 3.1 `src/lib/setting-types.ts`, 3.2 `src/lib/setting-client.ts`, 3. Cấu trúc dữ liệu, 4. Component, 6. Ba trạng thái màn hình, 7. Test case cần kiểm bằng tay, Plan: Màn hình Setting (Other) — frontend (+1 more)
 
 ### Community 74 - "SettingScreen.tsx"
-Cohesion: 0.20
-Nodes (13): 6. Ba trạng thái màn hình, SettingHeader(), SettingHeaderProps, SettingSkeleton(), SettingTileGroupProps, fetchUserProfile(), STATIC_MEMBERSHIP, LOGOUT_ITEM_ID (+5 more)
+Cohesion: 0.11
+Nodes (23): 5. Logic & xử lý lỗi, LogoutConfirmDialog(), SettingHeader(), SettingHeaderProps, SettingMenuList(), SettingMenuListProps, renderDescription(), SettingMenuRow() (+15 more)
 
 ### Community 75 - "compilerOptions"
 Cohesion: 0.11
@@ -598,9 +604,9 @@ Nodes (17): Best Practices, Command, Common Patterns, Common seed commands, Cond
 Cohesion: 0.11
 Nodes (17): 1. Install dotenv, 2. Import in prisma.config.ts, Application Code, Bun Users, CI/CD Considerations, Entry point, Environment Variables, Multiple .env Files (+9 more)
 
-### Community 79 - "HomeScreen"
-Cohesion: 0.11
-Nodes (16): 2.2 Hành vi chưa được mockup mô tả, 2.3 Account type & Currency, 2.4 Nguồn dữ liệu, 2. Quyết định thiết kế, 3.1 Type (`src/lib/home-types.ts`), 3.2 Luồng, 3.3 Logic hiển thị, 3. Cấu trúc dữ liệu & luồng (+8 more)
+### Community 79 - "2. Quyết định thiết kế"
+Cohesion: 0.50
+Nodes (4): 2.2 Hành vi chưa được mockup mô tả, 2.3 Account type & Currency, 2.4 Nguồn dữ liệu, 2. Quyết định thiết kế
 
 ### Community 80 - "prisma db seed"
 Cohesion: 0.11
@@ -642,9 +648,9 @@ Nodes (16): Browser-Safe Types, Bun, "Cannot use import statement outside a modu
 Cohesion: 0.12
 Nodes (16): 1. Endpoint, 2. Quy ước chung (áp dụng cho mọi endpoint), 3. Chi tiết từng endpoint, 4. Edge case chung, 5. Hạng mục, 6. Test case, Plan Backend 07 — Report, `/report/expense-analysis` (+8 more)
 
-### Community 90 - "FormAlert"
+### Community 90 - "DayCalendarModal"
 Cohesion: 0.13
-Nodes (15): Cấu trúc route, Edge cases, Plan — Màn hình Auth (Login / Register), Quyết định đã chốt với user, Responsive & a11y, Sửa file, Test case (thủ công), Trạng thái màn hình (+7 more)
+Nodes (10): Không sửa / không xoá, Logic xử lý & edge case, Plan: Màn hình Transaction History (Lịch sử giao dịch), Route mới, Test case cần kiểm tra thủ công sau khi code, DayCalendarModal(), DayCalendarModalProps, MONTH_SHORT_NAMES (+2 more)
 
 ### Community 91 - "prisma db pull"
 Cohesion: 0.12
@@ -683,8 +689,8 @@ Cohesion: 0.12
 Nodes (16): scripts, build, db:deploy, dev, lint, postinstall, start, test:account (+8 more)
 
 ### Community 100 - "prisma.ts"
-Cohesion: 0.16
-Nodes (10): dynamic, runtime, GET, monthRange(), querySchema, src_generated_prisma_client, src_generated_prisma_enums_transactiontype, adapter (+2 more)
+Cohesion: 0.22
+Nodes (6): dynamic, runtime, src_generated_prisma_client, adapter, globalForPrisma, prisma
 
 ### Community 101 - "Schema Changes"
 Cohesion: 0.12
@@ -706,9 +712,9 @@ Nodes (14): Error Handling, Prerequisites, Prisma Postgres Setup, Reference File
 Cohesion: 0.13
 Nodes (14): 10. Checklist, 1. Endpoint, 2. Ràng buộc field theo `type` (bảng chuẩn của spec), 3. Kiểm tra tham chiếu (thứ tự cố định), 4. `receiveAmount`, 5. Cập nhật số dư, 6. Query params của `GET /transactions`, 7. Edge case (+6 more)
 
-### Community 106 - "TransactionDetailScreen.tsx"
-Cohesion: 0.14
-Nodes (7): DeleteTransactionDialog(), DeleteTransactionDialogProps, Overlay, Status, CategoryFormPanel(), RecordFieldErrors, RecordOptions
+### Community 106 - "report.md"
+Cohesion: 0.13
+Nodes (13): 1. Phạm vi, 3.1 `src/lib/report-types.ts`, 3.2 `src/lib/report-client.ts`, 3. Cấu trúc dữ liệu, 5. Logic & xử lý lỗi, 6. Ba trạng thái màn hình, 7. Test case cần kiểm bằng tay, 8. Hạng mục thực hiện (+5 more)
 
 ### Community 107 - "Model Queries"
 Cohesion: 0.13
@@ -742,9 +748,9 @@ Nodes (13): 1. Console-first workflow, 2. Quick provisioning with create-db, 2b.
 Cohesion: 0.14
 Nodes (14): Astro, Bun, Elysia, and Plain Source Servers, CLI-First Model, CLI Matrix, Custom Build Artifacts, Hono, NestJS, Next.js (+6 more)
 
-### Community 115 - "Plan: Màn hình Home (dashboard) — frontend"
-Cohesion: 0.14
-Nodes (13): 1. Phạm vi, 2.1 Bảng màu, 2.2 Chart — vẽ bằng SVG inline, không thêm dependency, 2.3 Nguồn dữ liệu, 2.4 Ẩn/hiện số dư, 2.5 Responsive, 2. Quyết định thiết kế, 4. Hạng mục công việc (+5 more)
+### Community 115 - "FormAlert"
+Cohesion: 0.12
+Nodes (14): 2. Edge cases, 3. Test case (Playwright), 4. Hạng mục, Plan: nút sort Tăng/Giảm trên màn Expense Analysis, 4. Hạng mục công việc, 5. Test case cần kiểm, 6. Vấn đề tồn đọng (ngoài phạm vi plan này), 7. Checklist (+6 more)
 
 ### Community 116 - "Prisma Compute Framework Readiness"
 Cohesion: 0.14
@@ -783,16 +789,16 @@ Cohesion: 0.15
 Nodes (13): Agent Skill Installation, Auth and Project Binding, Build and Run Locally, Database and Env, Deploy, Deployment Story: GitHub vs CLI, Operations, Output Handling (+5 more)
 
 ### Community 125 - "devDependencies"
-Cohesion: 0.15
-Nodes (13): devDependencies, dotenv, eslint, eslint-config-next, @playwright/test, prisma, tailwindcss, @tailwindcss/postcss (+5 more)
+Cohesion: 0.14
+Nodes (14): devDependencies, dotenv, eslint, eslint-config-next, @playwright/test, prettier, prisma, tailwindcss (+6 more)
 
 ### Community 126 - "Plan Backend 02 — Account"
 Cohesion: 0.15
 Nodes (12): 1. Endpoint, 2. Tính số dư, 3. Query params & sort, 4. Nghiệp vụ & edge case, 5. Summary, 6. Hạng mục, 7. Test case, 8. Checklist (+4 more)
 
-### Community 127 - "formatDate"
-Cohesion: 0.18
-Nodes (11): 7. Checklist, 2.1 Bảng màu, 2.2 Điều hướng, 2.3 Hành vi chưa được mockup mô tả, 2.4 Nguồn dữ liệu, 2.5 Tái sử dụng, 2.6 Responsive, 2. Quyết định thiết kế (+3 more)
+### Community 127 - "LoanRow.tsx"
+Cohesion: 0.15
+Nodes (15): 2.1 Bảng màu, 2.2 Điều hướng, 2.3 Hành vi chưa được mockup mô tả, 2.4 Nguồn dữ liệu, 2.5 Tái sử dụng, 2.6 Responsive, 2. Quyết định thiết kế, LoanRow() (+7 more)
 
 ### Community 128 - "prisma db execute"
 Cohesion: 0.15
@@ -815,8 +821,8 @@ Cohesion: 0.15
 Nodes (12): API exploration, Authentication methods, Base URL, Current resource inventory, management-api, Notes, OAuth flow summary, Priority (+4 more)
 
 ### Community 133 - "CLAUDE.md — Quy tắc làm việc cho Claude Code"
-Cohesion: 0.17
-Nodes (11): 1. Cấu trúc project, 2. Các lệnh npm thường dùng, 3. Version cố định của stack, 4. Kiến trúc App Router, 5. Nơi lưu tài liệu, 6. Nguyên tắc thiết kế database (Prisma), 7. Quy trình bắt buộc: Explore → Plan → Code → Verify, CLAUDE.md — Quy tắc làm việc cho Claude Code (+3 more)
+Cohesion: 0.11
+Nodes (17): 1. Cấu trúc project, 2. Các lệnh npm thường dùng, 3. Version cố định của stack, 4. Kiến trúc App Router, 5. Nơi lưu tài liệu, 6. Nguyên tắc thiết kế database (Prisma), 7. Quy trình bắt buộc: Explore → Plan → Code → Verify, 8.1. Công cụ MCP graphify (+9 more)
 
 ### Community 134 - "prisma migrate diff"
 Cohesion: 0.17
@@ -854,9 +860,9 @@ Nodes (11): 1. Endpoint, 2. Query params, 3. Tổng công nợ, 4. Edge case, 5.
 Cohesion: 0.17
 Nodes (11): 1. Thay đổi API (đã duyệt), 2. Chi tiết implement `getExpenseByCategory`, 3. Schema zod, 4. Route handler, 5. Test case, 6. Hạng mục, Plan Backend — Expense Analysis (tab Report), Sửa file (+3 more)
 
-### Community 143 - "Kết nối frontend với API thật (thay dữ liệu giả)"
-Cohesion: 0.17
-Nodes (10): Bối cảnh, Không làm trong task này, Kết nối frontend với API thật (thay dữ liệu giả), Thêm file, Verify, Vấn đề cần quyết định trước khi code, UserResponse, AUTH_PATHS (+2 more)
+### Community 143 - "next"
+Cohesion: 0.09
+Nodes (15): nextConfig, Bối cảnh, Không làm trong task này, Kết nối frontend với API thật (thay dữ liệu giả), Thêm file, Verify, Vấn đề cần quyết định trước khi code, next (+7 more)
 
 ### Community 144 - "prisma migrate diff"
 Cohesion: 0.17
@@ -1038,9 +1044,9 @@ Nodes (9): dependencies, bcryptjs, lucide-react, next, @prisma/adapter-mariadb, 
 Cohesion: 0.28
 Nodes (6): MONTH_SHORT_NAMES, monthIndexOf(), MonthRangeModal(), cellState(), pickMonth(), MonthRangeModalProps
 
-### Community 189 - "SettingMenuList.tsx"
-Cohesion: 0.36
-Nodes (7): SettingMenuList(), SettingMenuListProps, renderDescription(), SettingMenuRow(), SettingMenuRowProps, SETTING_MENU, SettingMenuItem
+### Community 189 - "ReportScreen.tsx"
+Cohesion: 0.18
+Nodes (9): 4. Component, 1. Phạm vi, 6. Sửa `ReportShortcutGrid`, ReportScreen(), ReportShortcutGrid(), ReportShortcutGridProps, ReportSkeleton(), REPORT_SHORTCUTS (+1 more)
 
 ### Community 190 - "history-types.ts"
 Cohesion: 0.36
@@ -1142,9 +1148,9 @@ Nodes (7): findFirst, findFirstOrThrow, findMany, findUnique, findUniqueOrThrow,
 Cohesion: 0.29
 Nodes (6): 1. Bảo mật dữ liệu người dùng (mức độ: Nghiêm trọng), 2. Kiểu dữ liệu tiền tệ (mức độ: Nghiêm trọng), 3. Soft delete (mức độ: Nghiêm trọng), 4. Validation (mức độ: Cảnh báo), 5. Hiệu năng (mức độ: Cảnh báo), 6. Những gì KHÔNG cần báo cáo
 
-### Community 215 - "Fix: Session cookie `Secure` khiến login không redirect trên ALB HTTP (dev)"
-Cohesion: 0.29
-Nodes (6): Bối cảnh / root cause, Fix: Session cookie `Secure` khiến login không redirect trên ALB HTTP (dev), Ghi chú, Thêm file, Xoá file, Đã kiểm chứng
+### Community 215 - "CategoryBreakdownEntry"
+Cohesion: 0.23
+Nodes (10): 4.1 Component, CategoryBreakdownList(), CategoryBreakdownListProps, CategoryBreakdownRow(), CategoryBreakdownRowProps, RowBody(), buildSlices(), CategoryDonutChart() (+2 more)
 
 ### Community 216 - "Test case: Tạo khoản chi tiêu (Create Expense)"
 Cohesion: 0.29
@@ -1182,9 +1188,9 @@ Nodes (6): Checklist, Ground rules, Priority, References, verify-cutover-checkli
 Cohesion: 0.29
 Nodes (6): Basic instantiation, Common mistakes, Key rules, Prisma 7 Client Instantiation, Required packages, Usage in application code
 
-### Community 225 - "API design rules — lab-expense-management"
-Cohesion: 0.33
-Nodes (5): 1. Chuẩn tài liệu, 2. Danh sách cụm chức năng cố định, 4. Quy ước dữ liệu, 5. Quy trình, API design rules — lab-expense-management
+### Community 225 - "ExpenseAnalysisScreen.tsx"
+Cohesion: 0.23
+Nodes (8): 4.2 Donut chart — không thêm thư viện, 4.3 Màu từng lát cắt — dữ liệu, không phải màu giao diện mới, 4.5 Ba trạng thái, 4. Màn chính `/report/expense-analysis`, ExpenseAnalysisSkeleton(), SortToggleButton(), SortToggleButtonProps, SortType
 
 ### Community 226 - "graphify reference: query, path, explain"
 Cohesion: 0.33
@@ -1230,6 +1236,10 @@ Nodes (4): Nguyên tắc, Quy trình, Sau khi sinh, Testscript Generator
 Cohesion: 0.40
 Nodes (4): Deploy on Vercel, Getting Started, Learn More, Note
 
+### Community 239 - "Plan — Thiết kế lại Entity model (multi-user)"
+Cohesion: 0.22
+Nodes (8): Checklist, Hạng mục, Mục tiêu, Plan — Thiết kế lại Entity model (multi-user), Quyết định thiết kế, Sửa file, Thêm file, Xóa file
+
 ### Community 240 - "Bug Report Writer"
 Cohesion: 0.50
 Nodes (3): Bug Report Writer, Cấu trúc bắt buộc cho mỗi Bug (đủ 8 trường, đúng thứ tự), Quy tắc
@@ -1262,25 +1272,57 @@ Nodes (3): crons, regions, $schema
 Cohesion: 0.50
 Nodes (3): AI safety checkpoint for destructive commands, Reference, Required workflow
 
+### Community 251 - "mysql-expense"
+Cohesion: 0.18
+Nodes (10): MYSQL_DATABASE, MYSQL_HOST, MYSQL_PASSWORD, MYSQL_PORT, MYSQL_USER, C:\Users\admin\AppData\Roaming\uv\tools\graphifyy\Scripts\python.exe, uvx, graphify (+2 more)
+
+### Community 252 - "ScreenPlaceholder"
+Cohesion: 0.25
+Nodes (7): 1. Phạm vi, 1. Phạm vi, 4. Hạng mục công việc, Sửa file, Xoá file, ScreenPlaceholder(), ScreenPlaceholderProps
+
+### Community 262 - "startOfDay"
+Cohesion: 0.46
+Nodes (8): 3.3 Hàm thuần dùng chung, Sửa file, customRange(), endOfDay(), monthSpanRange(), quarterRange(), startOfDay(), yearSpanRange()
+
+### Community 263 - "ExpenseAnalysisScreen"
+Cohesion: 0.43
+Nodes (6): 1. Thiết kế, 3.4 Quy tắc khi đổi tab, ExpenseAnalysisScreen(), applyPeriod(), changeGranularity(), periodToQuery()
+
+### Community 264 - "2. Quyết định thiết kế"
+Cohesion: 0.33
+Nodes (6): 2.1 Bảng màu, 2.2 Chart — vẽ bằng SVG inline, không thêm dependency, 2.3 Nguồn dữ liệu, 2.4 Ẩn/hiện số dư, 2.5 Responsive, 2. Quyết định thiết kế
+
+### Community 265 - "2. Quyết định thiết kế (đã chốt với user)"
+Cohesion: 0.33
+Nodes (6): 2.1 Bảng màu, 2.2 Adjustment, 2.3 Nguồn dữ liệu, 2.4 Điều hướng luồng phụ, 2.5 Responsive, 2. Quyết định thiết kế (đã chốt với user)
+
+### Community 266 - "8. Hạng mục thực hiện"
+Cohesion: 0.40
+Nodes (5): 8. Hạng mục thực hiện, Sửa file, Thêm file, Verify, Xóa file
+
+### Community 267 - "8. Hạng mục thực hiện"
+Cohesion: 0.40
+Nodes (5): 8. Hạng mục thực hiện, Sửa file, Thêm file, Verify, Xóa file
+
 ## Knowledge Gaps
-- **2093 isolated node(s):** `C:\Users\admin\AppData\Roaming\uv\tools\graphifyy\Scripts\python.exe`, `entrypoint.sh script`, `eslintConfig`, `nextConfig`, `name` (+2088 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 2370 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **2108 isolated node(s):** `C:\Users\admin\AppData\Roaming\uv\tools\graphifyy\Scripts\python.exe`, `uvx`, `mysql-mcp-server`, `MYSQL_HOST`, `MYSQL_PORT` (+2103 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 2387 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **23 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `next` connect `next` to `FlowDetailScreen.tsx`, `ok`, `AccountFormPanel.tsx`, `package.json`, `lucide-react`, `period.ts`, `auth.service.ts`, `Kết nối frontend với API thật (thay dữ liệu giả)`, `Sửa file`, `RecordScreen.tsx`, `expense-analysis-client.ts`, `home-types.ts`, `react`, `ExpenseAnalysisScreen.tsx`, `formatCurrency`, `Plan: Tái cấu trúc frontend — Navigation shell mobile-first`, `ExpenseAnalysisCard.tsx`, `FlowSummaryCard.tsx`, `SettingScreen.tsx`, `prisma.ts`, `TransactionDetailScreen.tsx`?**
-  _High betweenness centrality (0.072) - this node is a cross-community bridge._
+- **Why does `next` connect `next` to `FlowDetailScreen.tsx`, `ok`, `package.json`, `LoginForm.tsx`, `HistoryPeriodScreen.tsx`, `auth.service.ts`, `react`, `RecordScreen.tsx`, `format.ts`, `ExpenseAnalysisDetailScreen.tsx`, `app/layout.tsx`, `Plan: Tái cấu trúc frontend — Navigation shell mobile-first`, `home-types.ts`, `formatCurrency`, `ReportScreen.tsx`, `SettingScreen.tsx`, `CategoryBreakdownEntry`, `ExpenseAnalysisScreen.tsx`, `prisma.ts`, `LoanRow.tsx`?**
+  _High betweenness centrality (0.062) - this node is a cross-community bridge._
+- **Why does `lucide-react` connect `lucide-react` to `FlowDetailScreen.tsx`, `AccountFormPanel.tsx`, `package.json`, `LoginForm.tsx`, `HistoryPeriodScreen.tsx`, `react`, `RecordScreen.tsx`, `expense-analysis-client.ts`, `HomeHeader.tsx`, `format.ts`, `ExpenseAnalysisDetailScreen.tsx`, `period.ts`, `Plan: Tái cấu trúc frontend — Navigation shell mobile-first`, `ExchangeRate`, `home-types.ts`, `RecordType`, `MonthRangeModal.tsx`, `SettingScreen.tsx`, `YearRangeModal`, `CategoryBreakdownEntry`, `DayCalendarModal`, `ExpenseAnalysisScreen.tsx`, `FormAlert`, `LoanRow.tsx`?**
+  _High betweenness centrality (0.024) - this node is a cross-community bridge._
 - **Why does `update()` connect `client-api-mapping` to `Model Queries`, `AccountFormPanel.tsx`, `Model Queries`?**
-  _High betweenness centrality (0.021) - this node is a cross-community bridge._
-- **Why does `AccountFormPanel()` connect `AccountFormPanel.tsx` to `Sửa file`, `RecordScreen.tsx`, `client-api-mapping`, `Kết nối frontend với API thật (thay dữ liệu giả)`?**
-  _High betweenness centrality (0.021) - this node is a cross-community bridge._
+  _High betweenness centrality (0.020) - this node is a cross-community bridge._
 - **Are the 4 inferred relationships involving `formatCurrency()` (e.g. with `2.5 Điều hướng & responsive` and `3.3 Logic hiển thị`) actually correct?**
   _`formatCurrency()` has 4 INFERRED edges - model-reasoned connections that need verification._
-- **What connects `C:\Users\admin\AppData\Roaming\uv\tools\graphifyy\Scripts\python.exe`, `entrypoint.sh script`, `eslintConfig` to the rest of the system?**
-  _2093 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **What connects `C:\Users\admin\AppData\Roaming\uv\tools\graphifyy\Scripts\python.exe`, `uvx`, `mysql-mcp-server` to the rest of the system?**
+  _2108 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `testscript.js` be split into smaller, more focused modules?**
   _Cohesion score 0.057623762376237626 - nodes in this community are weakly interconnected._
 - **Should `report.service.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.09497964721845319 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.09043020193151888 - nodes in this community are weakly interconnected._
